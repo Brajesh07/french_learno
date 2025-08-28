@@ -33,15 +33,9 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
   
-  // Redirect root to login by default
-  if (pathname === '/') {
-    if (sessionToken) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    } else {
-      return NextResponse.redirect(new URL('/login', request.url));
-    }
-  }
-
+  // Allow root path to be handled by the page component
+  // The page component will handle authentication-based routing
+  
   return NextResponse.next();
 }
 
