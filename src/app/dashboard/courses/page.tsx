@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Course, FrenchLevel, PaginatedResponse } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 interface CourseWithQuizCount extends Course {
   quizCount: number;
@@ -22,13 +23,25 @@ export default function CoursesPage() {
   const [publishedFilter, setPublishedFilter] = useState<string>("");
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const { getIdToken, user } = useAuth();
 
   const limit = 10;
 
   const fetchCourses = useCallback(async () => {
+    if (!user) {
+      setError("Not authenticated");
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
+
+      const idToken = await getIdToken();
+      if (!idToken) {
+        throw new Error("Failed to get authentication token");
+      }
 
       const params = new URLSearchParams({
         page: page.toString(),
@@ -42,7 +55,10 @@ export default function CoursesPage() {
       if (publishedFilter) params.append("isPublished", publishedFilter);
 
       const response = await fetch(`/api/admin/courses?${params}`, {
-        credentials: "include",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
       });
 
       if (!response.ok) {
@@ -61,7 +77,16 @@ export default function CoursesPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, searchTerm, levelFilter, publishedFilter, sortBy, sortOrder]);
+  }, [
+    page,
+    searchTerm,
+    levelFilter,
+    publishedFilter,
+    sortBy,
+    sortOrder,
+    user,
+    getIdToken,
+  ]);
 
   useEffect(() => {
     fetchCourses();
@@ -87,13 +112,23 @@ export default function CoursesPage() {
     courseId: string,
     currentStatus: boolean
   ) => {
+    if (!user) {
+      setError("Not authenticated");
+      return;
+    }
+
     try {
+      const idToken = await getIdToken();
+      if (!idToken) {
+        throw new Error("Failed to get authentication token");
+      }
+
       const response = await fetch(`/api/admin/courses/${courseId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
         },
-        credentials: "include",
         body: JSON.stringify({
           isPublished: !currentStatus,
         }),

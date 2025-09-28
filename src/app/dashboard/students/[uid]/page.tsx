@@ -13,10 +13,11 @@ interface StudentDetails {
 }
 
 interface StudentPageProps {
-  params: { uid: string };
+  params: Promise<{ uid: string }>;
 }
 
 const StudentPage: React.FC<StudentPageProps> = ({ params }) => {
+  const resolvedParams = React.use(params);
   const [student, setStudent] = useState<StudentDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +39,7 @@ const StudentPage: React.FC<StudentPageProps> = ({ params }) => {
         throw new Error("Failed to get authentication token");
       }
 
-      const res = await fetch(`/api/admin/student/${params.uid}`, {
+      const res = await fetch(`/api/admin/student/${resolvedParams.uid}`, {
         headers: {
           Accept: "application/json",
           Authorization: `Bearer ${idToken}`,
@@ -57,7 +58,7 @@ const StudentPage: React.FC<StudentPageProps> = ({ params }) => {
     } finally {
       setLoading(false);
     }
-  }, [user, getIdToken, params.uid]);
+  }, [user, getIdToken, resolvedParams.uid]);
 
   const updateStudent = async (updates: {
     isActive?: boolean;
@@ -75,7 +76,7 @@ const StudentPage: React.FC<StudentPageProps> = ({ params }) => {
         throw new Error("Failed to get authentication token");
       }
 
-      const res = await fetch(`/api/admin/student/${params.uid}`, {
+      const res = await fetch(`/api/admin/student/${resolvedParams.uid}`, {
         method: "PATCH",
         headers: {
           Accept: "application/json",
