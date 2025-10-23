@@ -12,13 +12,14 @@ import { generateId } from "@/lib/utils";
 
 interface QuizCreatorProps {
   courseId?: string;
+  courseTitle?: string;
 }
 
 export default function QuizCreator({
   courseId: initialCourseId,
+  courseTitle,
 }: QuizCreatorProps) {
   const { user } = useAuth();
-  console.log("QuizCreator - Current user:", user); // Debug log
   const [isLoading, setIsLoading] = useState(false);
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
@@ -88,7 +89,10 @@ export default function QuizCreator({
       return;
     }
 
-    if (!formData.courseId.trim()) {
+    // Use provided courseId or form courseId
+    const finalCourseId = initialCourseId || formData.courseId.trim();
+
+    if (!finalCourseId) {
       setFeedback({ type: "error", message: "Course ID is required" });
       return;
     }
@@ -135,13 +139,19 @@ export default function QuizCreator({
     setFeedback(null);
 
     try {
+      // Use finalCourseId in the submission
+      const submissionData = {
+        ...formData,
+        courseId: finalCourseId,
+      };
+
       const response = await fetch("/api/admin/quizzes", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         credentials: "include",
-        body: JSON.stringify(formData),
+        body: JSON.stringify(submissionData),
       });
 
       const result = await response.json();
@@ -222,21 +232,38 @@ export default function QuizCreator({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Course ID *
-                  </label>
-                  <Input
-                    value={formData.courseId}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        courseId: e.target.value,
-                      }))
-                    }
-                    placeholder="Enter course ID"
-                  />
-                </div>
+                {/* Course ID Field - Conditional rendering */}
+                {initialCourseId ? (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Course
+                    </label>
+                    <div className="px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                        {courseTitle || `Course ID: ${initialCourseId}`}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {initialCourseId}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Course ID *
+                    </label>
+                    <Input
+                      value={formData.courseId}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          courseId: e.target.value,
+                        }))
+                      }
+                      placeholder="Enter course ID"
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

@@ -39,7 +39,23 @@ export default function CoursePreviewPage() {
       }
 
       const data: CourseDetails = await response.json();
-      setCourseDetails(data);
+
+      // Convert date strings back to Date objects
+      const processedData = {
+        ...data,
+        course: {
+          ...data.course,
+          createdAt: new Date(data.course.createdAt),
+          updatedAt: new Date(data.course.updatedAt),
+        },
+        quizzes: data.quizzes.map((quiz) => ({
+          ...quiz,
+          createdAt: new Date(quiz.createdAt),
+          updatedAt: new Date(quiz.updatedAt),
+        })),
+      };
+
+      setCourseDetails(processedData);
     } catch (err) {
       console.error("Error fetching course details:", err);
       setError(
