@@ -1,26 +1,21 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
+/**
+ * POST /api/auth/logout
+ *
+ * Signs the user out of Supabase and clears the session cookie.
+ */
 export async function POST() {
   try {
-    const response = NextResponse.json({
-      success: true,
-      message: 'Logged out successfully'
-    });
+    const supabase = await createClient();
+    await supabase.auth.signOut();
 
-    // Clear the session cookie
-    response.cookies.set('__session', '', {
-      maxAge: 0,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax'
-    });
-
-    return response;
-
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Logout API error:', error);
+    console.error('Logout error:', error);
     return NextResponse.json(
-      { error: 'Logout failed' },
+      { error: 'Failed to logout' },
       { status: 500 }
     );
   }

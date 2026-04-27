@@ -14,7 +14,7 @@ const StudentsPage: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { getIdToken, user } = useAuth();
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchStudents = async () => {
@@ -27,16 +27,9 @@ const StudentsPage: React.FC = () => {
       setLoading(true);
       setError(null);
       try {
-        // Get the current user's ID token
-        const idToken = await getIdToken();
-        if (!idToken) {
-          throw new Error("Failed to get authentication token");
-        }
-
         const res = await fetch("/api/admin/list-students", {
           headers: {
             Accept: "application/json",
-            Authorization: `Bearer ${idToken}`,
           },
         });
         if (!res.ok) throw new Error("Failed to fetch students");
@@ -49,7 +42,7 @@ const StudentsPage: React.FC = () => {
       }
     };
     fetchStudents();
-  }, [getIdToken, user]);
+  }, [user]);
 
   return (
     <div className="p-6">

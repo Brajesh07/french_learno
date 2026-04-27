@@ -22,7 +22,7 @@ const StudentPage: React.FC<StudentPageProps> = ({ params }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
-  const { getIdToken, user } = useAuth();
+  const { user } = useAuth();
 
   const fetchStudent = useCallback(async () => {
     if (!user) {
@@ -34,15 +34,9 @@ const StudentPage: React.FC<StudentPageProps> = ({ params }) => {
     setLoading(true);
     setError(null);
     try {
-      const idToken = await getIdToken();
-      if (!idToken) {
-        throw new Error("Failed to get authentication token");
-      }
-
       const res = await fetch(`/api/admin/student/${resolvedParams.uid}`, {
         headers: {
           Accept: "application/json",
-          Authorization: `Bearer ${idToken}`,
         },
       });
 
@@ -58,7 +52,7 @@ const StudentPage: React.FC<StudentPageProps> = ({ params }) => {
     } finally {
       setLoading(false);
     }
-  }, [user, getIdToken, resolvedParams.uid]);
+  }, [user, resolvedParams.uid]);
 
   const updateStudent = async (updates: {
     isActive?: boolean;
@@ -71,17 +65,11 @@ const StudentPage: React.FC<StudentPageProps> = ({ params }) => {
     setError(null);
 
     try {
-      const idToken = await getIdToken();
-      if (!idToken) {
-        throw new Error("Failed to get authentication token");
-      }
-
       const res = await fetch(`/api/admin/student/${resolvedParams.uid}`, {
         method: "PATCH",
         headers: {
           Accept: "application/json",
           "Content-Type": "application/json",
-          Authorization: `Bearer ${idToken}`,
         },
         body: JSON.stringify(updates),
       });

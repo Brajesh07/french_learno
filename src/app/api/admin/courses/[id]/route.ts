@@ -1,264 +1,132 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth, adminDb } from '@/lib/firebase-admin';
-import { Course, Quiz } from '@/lib/types';
+import { requireAdmin } from '@/lib/supabase/auth-helpers';
+import { createClient } from '@/lib/supabase/server';
 
+// ----------------------------------------------------------------
+// GET /api/admin/courses/:id
+// Returns a single course with its linked quizzes.
+// ----------------------------------------------------------------
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdmin(request);
+  if (auth.error) return auth.error;
+
   try {
     const { id } = await params;
-    // Verify admin authentication
-    const authHeader = request.headers.get('cookie');
-    if (!authHeader) {
-      return NextResponse.json(
-        { error: 'No authentication token provided' },
-        { status: 401 }
-      );
+    const supabase = await createClient();
+
+    const { data: course, error: courseError } = await supabase
+      .from('courses')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (courseError || !course) {
+      return NextResponse.json({ error: 'Course not found' }, { status: 404 });
     }
 
-    const sessionToken = authHeader
-      .split(';')
-      .find(cookie => cookie.trim().startsWith('__session='))
-      ?.split('=')[1];
+    const { data: quizzes, error: quizzesError } = await supabase
+      .from('quizzes')
+      .select('*')
+      .eq('course_id', id)
+      .order('created_at', { ascending: true });
 
-    if (!sessionToken) {
-      return NextResponse.json(
-        { error: 'No session token found' },
-        { status: 401 }
-      );
+    if (quizzesError) {
+      console.error('Error fetching quizzes for course:', quizzesError);
     }
 
-    const decodedToken = await adminAuth.verifySessionCookie(sessionToken, true);
-    const adminId = decodedToken.uid;
-
-    const adminDoc = await adminDb.collection('admins').doc(adminId).get();
-    if (!adminDoc.exists) {
-      return NextResponse.json(
-        { error: 'Unauthorized: Admin access required' },
-        { status: 403 }
-      );
-    }
-
-    const courseId = id;
-
-    // Get course document
-    const courseDoc = await adminDb.collection('courses').doc(courseId).get();
-    
-    if (!courseDoc.exists) {
-      return NextResponse.json(
-        { error: 'Course not found' },
-        { status: 404 }
-      );
-    }
-
-    const courseData = courseDoc.data()!;
-
-    // Get quizzes for this course
-    const quizzesSnapshot = await adminDb
-      .collection('courses')
-      .doc(courseId)
-      .collection('quizzes')
-      .orderBy('order', 'asc')
-      .get();
-
-    const quizzes: Quiz[] = quizzesSnapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        title: data.title,
-        description: data.description,
-        courseId: courseId,
-        level: data.level,
-        questions: data.questions || [],
-        timeLimit: data.timeLimit,
-        passingScore: data.passingScore,
-        isActive: data.isActive,
-        isPublished: data.isPublished,
-        order: data.order,
-        createdAt: data.createdAt?.toDate() || new Date(),
-        updatedAt: data.updatedAt?.toDate() || new Date(),
-        createdBy: data.createdBy,
-      };
-    });
-
-    const course: Course = {
-      id: courseDoc.id,
-      title: courseData.title,
-      description: courseData.description,
-      level: courseData.level,
-      content: courseData.content,
-      isPublished: courseData.isPublished,
-      order: courseData.order,
-      prerequisites: courseData.prerequisites || [],
-      estimatedDuration: courseData.estimatedDuration,
-      createdAt: courseData.createdAt?.toDate() || new Date(),
-      updatedAt: courseData.updatedAt?.toDate() || new Date(),
-      createdBy: courseData.createdBy,
-    };
-
-    return NextResponse.json({
-      course,
-      quizzes,
-    });
-
+    return NextResponse.json({ course, quizzes: quizzes ?? [] });
   } catch (error) {
-    console.error('Error fetching course:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch course details' },
-      { status: 500 }
-    );
+    console.error('Course GET [id] error:', error);
+    return NextResponse.json({ error: 'Failed to fetch course' }, { status: 500 });
   }
 }
 
-export async function PUT(
+// ----------------------------------------------------------------
+// PATCH /api/admin/courses/:id
+// Partially updates a course.
+// ----------------------------------------------------------------
+export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdmin(request);
+  if (auth.error) return auth.error;
+
   try {
     const { id } = await params;
-    // Verify admin authentication
-    const authHeader = request.headers.get('cookie');
-    if (!authHeader) {
-      return NextResponse.json(
-        { error: 'No authentication token provided' },
-        { status: 401 }
-      );
+    const supabase = await createClient();
+    const body = await request.json();
+
+    // Whitelist allowed fields
+    const allowedFields = [
+      'title', 'description', 'level', 'is_published',
+      'content_text', 'content_audio_url', 'content_image_url', 'content_video_url',
+    ];
+    const updateData: Record<string, unknown> = {};
+    for (const key of allowedFields) {
+      if (key in body) updateData[key] = body[key];
     }
 
-    const sessionToken = authHeader
-      .split(';')
-      .find(cookie => cookie.trim().startsWith('__session='))
-      ?.split('=')[1];
-
-    if (!sessionToken) {
-      return NextResponse.json(
-        { error: 'No session token found' },
-        { status: 401 }
-      );
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
     }
 
-    const decodedToken = await adminAuth.verifySessionCookie(sessionToken, true);
-    const adminId = decodedToken.uid;
+    const { data, error } = await supabase
+      .from('courses')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
 
-    const adminDoc = await adminDb.collection('admins').doc(adminId).get();
-    if (!adminDoc.exists) {
-      return NextResponse.json(
-        { error: 'Unauthorized: Admin access required' },
-        { status: 403 }
-      );
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return NextResponse.json({ error: 'Course not found' }, { status: 404 });
+      }
+      console.error('Error updating course:', error);
+      return NextResponse.json({ error: 'Failed to update course' }, { status: 500 });
     }
 
-    const courseId = id;
-    const updateData = await request.json();
-
-    // Check if course exists
-    const courseDoc = await adminDb.collection('courses').doc(courseId).get();
-    if (!courseDoc.exists) {
-      return NextResponse.json(
-        { error: 'Course not found' },
-        { status: 404 }
-      );
-    }
-
-    // Update course
-    const updatedCourse = {
-      ...updateData,
-      updatedAt: new Date(),
-    };
-
-    await adminDb.collection('courses').doc(courseId).update(updatedCourse);
-
-    return NextResponse.json({
-      success: true,
-      message: 'Course updated successfully',
-    });
-
+    return NextResponse.json({ success: true, data });
   } catch (error) {
-    console.error('Error updating course:', error);
-    return NextResponse.json(
-      { error: 'Failed to update course' },
-      { status: 500 }
-    );
+    console.error('Course PATCH error:', error);
+    return NextResponse.json({ error: 'Failed to update course' }, { status: 500 });
   }
 }
 
+// ----------------------------------------------------------------
+// DELETE /api/admin/courses/:id
+// Deletes a course (cascades to quizzes via FK constraint).
+// ----------------------------------------------------------------
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdmin(request);
+  if (auth.error) return auth.error;
+
   try {
     const { id } = await params;
-    // Verify admin authentication
-    const authHeader = request.headers.get('cookie');
-    if (!authHeader) {
-      return NextResponse.json(
-        { error: 'No authentication token provided' },
-        { status: 401 }
-      );
+    const supabase = await createClient();
+
+    const { error } = await supabase
+      .from('courses')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return NextResponse.json({ error: 'Course not found' }, { status: 404 });
+      }
+      console.error('Error deleting course:', error);
+      return NextResponse.json({ error: 'Failed to delete course' }, { status: 500 });
     }
 
-    const sessionToken = authHeader
-      .split(';')
-      .find(cookie => cookie.trim().startsWith('__session='))
-      ?.split('=')[1];
-
-    if (!sessionToken) {
-      return NextResponse.json(
-        { error: 'No session token found' },
-        { status: 401 }
-      );
-    }
-
-    const decodedToken = await adminAuth.verifySessionCookie(sessionToken, true);
-    const adminId = decodedToken.uid;
-
-    const adminDoc = await adminDb.collection('admins').doc(adminId).get();
-    if (!adminDoc.exists) {
-      return NextResponse.json(
-        { error: 'Unauthorized: Admin access required' },
-        { status: 403 }
-      );
-    }
-
-    const courseId = id;
-
-    // Check if course exists
-    const courseDoc = await adminDb.collection('courses').doc(courseId).get();
-    if (!courseDoc.exists) {
-      return NextResponse.json(
-        { error: 'Course not found' },
-        { status: 404 }
-      );
-    }
-
-    // Delete all quizzes in this course first
-    const quizzesSnapshot = await adminDb
-      .collection('courses')
-      .doc(courseId)
-      .collection('quizzes')
-      .get();
-
-    const batch = adminDb.batch();
-    quizzesSnapshot.docs.forEach(doc => {
-      batch.delete(doc.ref);
-    });
-
-    // Delete the course
-    batch.delete(adminDb.collection('courses').doc(courseId));
-
-    await batch.commit();
-
-    return NextResponse.json({
-      success: true,
-      message: 'Course deleted successfully',
-    });
-
+    return NextResponse.json({ success: true, message: 'Course deleted successfully' });
   } catch (error) {
-    console.error('Error deleting course:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete course' },
-      { status: 500 }
-    );
+    console.error('Course DELETE error:', error);
+    return NextResponse.json({ error: 'Failed to delete course' }, { status: 500 });
   }
 }

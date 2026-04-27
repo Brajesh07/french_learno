@@ -1,260 +1,124 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth } from '@/lib/firebase-admin';
-import { adminDb } from '@/lib/firebase-admin';
+import { requireAdmin } from '@/lib/supabase/auth-helpers';
+import { createClient } from '@/lib/supabase/server';
 
+// ----------------------------------------------------------------
+// GET /api/admin/quizzes/:id
+// Returns a quiz with its questions and answers.
+// ----------------------------------------------------------------
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdmin(request);
+  if (auth.error) return auth.error;
+
   try {
     const { id } = await params;
-    // Verify admin authentication
-    const authHeader = request.headers.get('cookie');
-    if (!authHeader) {
-      return NextResponse.json(
-        { error: 'No authentication token provided' },
-        { status: 401 }
-      );
+    const supabase = await createClient();
+
+    const { data: quiz, error: quizError } = await supabase
+      .from('quizzes')
+      .select(`
+        *,
+        quiz_questions (
+          *,
+          quiz_answers (*)
+        )
+      `)
+      .eq('id', id)
+      .single();
+
+    if (quizError || !quiz) {
+      return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
     }
-
-    const sessionToken = authHeader
-      .split(';')
-      .find(cookie => cookie.trim().startsWith('__session='))
-      ?.split('=')[1];
-
-    if (!sessionToken) {
-      return NextResponse.json(
-        { error: 'No session token found' },
-        { status: 401 }
-      );
-    }
-
-    const decodedToken = await adminAuth.verifySessionCookie(sessionToken, true);
-    const adminId = decodedToken.uid;
-
-    const adminDoc = await adminDb.collection('admins').doc(adminId).get();
-    if (!adminDoc.exists) {
-      return NextResponse.json(
-        { error: 'Unauthorized: Admin access required' },
-        { status: 403 }
-      );
-    }
-
-    const quizId = id;
-
-    // Get quiz from global quizzes collection
-    const quizDoc = await adminDb.collection('quizzes').doc(quizId).get();
-
-    if (!quizDoc.exists) {
-      return NextResponse.json(
-        { error: 'Quiz not found' },
-        { status: 404 }
-      );
-    }
-
-    const quizData = quizDoc.data();
-    if (!quizData) {
-      return NextResponse.json(
-        { error: 'Quiz data not found' },
-        { status: 404 }
-      );
-    }
-
-    // Transform the quiz data
-    const quiz = {
-      id: quizDoc.id,
-      title: quizData.title,
-      description: quizData.description,
-      courseId: quizData.courseId,
-      level: quizData.level,
-      questions: quizData.questions || [],
-      timeLimit: quizData.timeLimit,
-      passingScore: quizData.passingScore,
-      isActive: quizData.isActive,
-      isPublished: quizData.isPublished,
-      order: quizData.order,
-      createdAt: quizData.createdAt?.toDate() || new Date(),
-      updatedAt: quizData.updatedAt?.toDate() || new Date(),
-      createdBy: quizData.createdBy,
-    };
 
     return NextResponse.json(quiz);
-
   } catch (error) {
-    console.error('Error fetching quiz:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch quiz' },
-      { status: 500 }
-    );
+    console.error('Quiz GET [id] error:', error);
+    return NextResponse.json({ error: 'Failed to fetch quiz' }, { status: 500 });
   }
 }
 
-export async function PUT(
+// ----------------------------------------------------------------
+// PATCH /api/admin/quizzes/:id
+// Partially updates quiz metadata (not questions/answers).
+// ----------------------------------------------------------------
+export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdmin(request);
+  if (auth.error) return auth.error;
+
   try {
     const { id } = await params;
-    // Verify admin authentication
-    const authHeader = request.headers.get('cookie');
-    if (!authHeader) {
-      return NextResponse.json(
-        { error: 'No authentication token provided' },
-        { status: 401 }
-      );
+    const supabase = await createClient();
+    const body = await request.json();
+
+    const allowedFields = ['title', 'description', 'passing_score', 'is_published', 'course_id'];
+    const updateData: Record<string, unknown> = {};
+    for (const key of allowedFields) {
+      if (key in body) updateData[key] = body[key];
     }
 
-    const sessionToken = authHeader
-      .split(';')
-      .find(cookie => cookie.trim().startsWith('__session='))
-      ?.split('=')[1];
-
-    if (!sessionToken) {
-      return NextResponse.json(
-        { error: 'No session token found' },
-        { status: 401 }
-      );
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
     }
 
-    const decodedToken = await adminAuth.verifySessionCookie(sessionToken, true);
-    const adminId = decodedToken.uid;
+    const { data, error } = await supabase
+      .from('quizzes')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
 
-    const adminDoc = await adminDb.collection('admins').doc(adminId).get();
-    if (!adminDoc.exists) {
-      return NextResponse.json(
-        { error: 'Unauthorized: Admin access required' },
-        { status: 403 }
-      );
-    }
-
-    const quizId = id;
-    const updateData = await request.json();
-
-    // Check if quiz exists
-    const quizDoc = await adminDb.collection('quizzes').doc(quizId).get();
-    if (!quizDoc.exists) {
-      return NextResponse.json(
-        { error: 'Quiz not found' },
-        { status: 404 }
-      );
-    }
-
-    // Update the quiz
-    const updatedQuizData = {
-      ...updateData,
-      updatedAt: new Date(),
-    };
-
-    await adminDb.collection('quizzes').doc(quizId).update(updatedQuizData);
-
-    // If the quiz belongs to a course, also update it in the course's subcollection
-    const quizData = quizDoc.data();
-    if (quizData?.courseId) {
-      try {
-        await adminDb
-          .collection('courses')
-          .doc(quizData.courseId)
-          .collection('quizzes')
-          .doc(quizId)
-          .update(updatedQuizData);
-      } catch (error) {
-        console.error('Error updating quiz in course subcollection:', error);
-        // Continue even if subcollection update fails
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
       }
+      console.error('Error updating quiz:', error);
+      return NextResponse.json({ error: 'Failed to update quiz' }, { status: 500 });
     }
 
-    return NextResponse.json({
-      message: 'Quiz updated successfully',
-      id: quizId,
-    });
-
+    return NextResponse.json({ success: true, data });
   } catch (error) {
-    console.error('Error updating quiz:', error);
-    return NextResponse.json(
-      { error: 'Failed to update quiz' },
-      { status: 500 }
-    );
+    console.error('Quiz PATCH error:', error);
+    return NextResponse.json({ error: 'Failed to update quiz' }, { status: 500 });
   }
 }
 
+// ----------------------------------------------------------------
+// DELETE /api/admin/quizzes/:id
+// Deletes a quiz (cascades to quiz_questions → quiz_answers).
+// ----------------------------------------------------------------
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdmin(request);
+  if (auth.error) return auth.error;
+
   try {
     const { id } = await params;
-    // Verify admin authentication
-    const authHeader = request.headers.get('cookie');
-    if (!authHeader) {
-      return NextResponse.json(
-        { error: 'No authentication token provided' },
-        { status: 401 }
-      );
-    }
+    const supabase = await createClient();
 
-    const sessionToken = authHeader
-      .split(';')
-      .find(cookie => cookie.trim().startsWith('__session='))
-      ?.split('=')[1];
+    const { error } = await supabase
+      .from('quizzes')
+      .delete()
+      .eq('id', id);
 
-    if (!sessionToken) {
-      return NextResponse.json(
-        { error: 'No session token found' },
-        { status: 401 }
-      );
-    }
-
-    const decodedToken = await adminAuth.verifySessionCookie(sessionToken, true);
-    const adminId = decodedToken.uid;
-
-    const adminDoc = await adminDb.collection('admins').doc(adminId).get();
-    if (!adminDoc.exists) {
-      return NextResponse.json(
-        { error: 'Unauthorized: Admin access required' },
-        { status: 403 }
-      );
-    }
-
-    const quizId = id;
-
-    // Check if quiz exists and get course info
-    const quizDoc = await adminDb.collection('quizzes').doc(quizId).get();
-    if (!quizDoc.exists) {
-      return NextResponse.json(
-        { error: 'Quiz not found' },
-        { status: 404 }
-      );
-    }
-
-    const quizData = quizDoc.data();
-
-    // Delete from global quizzes collection
-    await adminDb.collection('quizzes').doc(quizId).delete();
-
-    // If the quiz belongs to a course, also delete it from the course's subcollection
-    if (quizData?.courseId) {
-      try {
-        await adminDb
-          .collection('courses')
-          .doc(quizData.courseId)
-          .collection('quizzes')
-          .doc(quizId)
-          .delete();
-      } catch (error) {
-        console.error('Error deleting quiz from course subcollection:', error);
-        // Continue even if subcollection delete fails
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
       }
+      console.error('Error deleting quiz:', error);
+      return NextResponse.json({ error: 'Failed to delete quiz' }, { status: 500 });
     }
 
-    return NextResponse.json({
-      message: 'Quiz deleted successfully',
-    });
-
+    return NextResponse.json({ success: true, message: 'Quiz deleted successfully' });
   } catch (error) {
-    console.error('Error deleting quiz:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete quiz' },
-      { status: 500 }
-    );
+    console.error('Quiz DELETE error:', error);
+    return NextResponse.json({ error: 'Failed to delete quiz' }, { status: 500 });
   }
 }

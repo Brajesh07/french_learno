@@ -5,20 +5,27 @@ import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useAuth } from "./AuthProvider";
-import { LoginFormData } from "@/lib/types";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 
+// ----------------------------------------------------------------
 // Validation schema
+// Accepts email OR username (min 3 chars)
+// ----------------------------------------------------------------
 const loginSchema = yup.object({
-  email: yup
+  emailOrUsername: yup
     .string()
-    .email("Please enter a valid email address")
-    .required("Email is required"),
+    .min(3, "Enter at least 3 characters")
+    .required("Email or username is required"),
   password: yup
     .string()
     .min(6, "Password must be at least 6 characters")
     .required("Password is required"),
 });
+
+interface LoginFormValues {
+  emailOrUsername: string;
+  password: string;
+}
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -32,29 +39,21 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<LoginFormData>({
+  } = useForm<LoginFormValues>({
     resolver: yupResolver(loginSchema),
   });
 
-  const onSubmit = async (data: LoginFormData) => {
+  const onSubmit = async (data: LoginFormValues) => {
     try {
-      await login(data.email, data.password);
+      await login(data.emailOrUsername, data.password);
       onSuccess?.();
     } catch (err) {
-      // Error is handled by the AuthProvider
       console.error("Login submission error:", err);
     }
   };
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
-
-  // Clear error when user starts typing
   const handleInputChange = () => {
-    if (error) {
-      clearError();
-    }
+    if (error) clearError();
   };
 
   return (
@@ -66,7 +65,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
             Admin Dashboard
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            French Learning App
+            FrenchLearno — Secure Admin Access
           </p>
         </div>
 
@@ -79,34 +78,34 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
 
         {/* Login Form */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* Email Field */}
+          {/* Email or Username Field */}
           <div>
             <label
-              htmlFor="email"
+              htmlFor="emailOrUsername"
               className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
             >
-              Email Address
+              Email or Username
             </label>
             <input
-              id="email"
-              type="email"
-              autoComplete="email"
+              id="emailOrUsername"
+              type="text"
+              autoComplete="username"
               className={`
-                w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 
+                w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400
                 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
                 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-500
                 ${
-                  errors.email
+                  errors.emailOrUsername
                     ? "border-red-300 dark:border-red-600"
                     : "border-gray-300 dark:border-gray-600"
                 }
               `}
-              placeholder="Enter your email"
-              {...register("email", { onChange: handleInputChange })}
+              placeholder="Enter your email or username"
+              {...register("emailOrUsername", { onChange: handleInputChange })}
             />
-            {errors.email && (
+            {errors.emailOrUsername && (
               <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                {errors.email.message}
+                {errors.emailOrUsername.message}
               </p>
             )}
           </div>
@@ -125,7 +124,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
                 className={`
-                  w-full px-3 py-2 pr-10 border rounded-md shadow-sm placeholder-gray-400 
+                  w-full px-3 py-2 pr-10 border rounded-md shadow-sm placeholder-gray-400
                   focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
                   dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-500
                   ${
@@ -140,7 +139,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
               <button
                 type="button"
                 className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                onClick={togglePasswordVisibility}
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? (
                   <EyeSlashIcon className="h-5 w-5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
@@ -161,8 +161,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
             type="submit"
             disabled={isSubmitting || loading}
             className={`
-              w-full flex justify-center py-2 px-4 border border-transparent rounded-md 
-              shadow-sm text-sm font-medium text-white 
+              w-full flex justify-center py-2 px-4 border border-transparent rounded-md
+              shadow-sm text-sm font-medium text-white
               focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
               ${
                 isSubmitting || loading
@@ -186,12 +186,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
                     r="10"
                     stroke="currentColor"
                     strokeWidth="4"
-                  ></circle>
+                  />
                   <path
                     className="opacity-75"
                     fill="currentColor"
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
+                  />
                 </svg>
                 Signing in...
               </div>

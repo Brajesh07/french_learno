@@ -1,60 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth, adminDb } from '@/lib/firebase-admin';
+import { requireAdmin } from '@/lib/supabase/auth-helpers';
+import { createClient } from '@/lib/supabase/server';
 
-// Helper to check if a user is an admin
-async function isAdmin(uid: string): Promise<boolean> {
-  const doc = await adminDb.collection('admins').doc(uid).get();
-  return doc.exists;
-}
-
-// Helper to verify the ID token and admin status
-async function verifyAdmin(request: NextRequest): Promise<string | null> {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
-  const idToken = authHeader.replace('Bearer ', '');
-  try {
-    const decoded = await adminAuth.verifyIdToken(idToken);
-    const uid = decoded.uid;
-    if (await isAdmin(uid)) return uid;
-    return null;
-  } catch {
-    return null;
-  }
-}
-
+// ----------------------------------------------------------------
+// GET /api/admin/list-students
+// Returns all users with role = 'student'.
+// ----------------------------------------------------------------
 export async function GET(request: NextRequest) {
-  // Auth check
-  const adminUid = await verifyAdmin(request);
-  if (!adminUid) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = await requireAdmin(request);
+  if (auth.error) return auth.error;
 
   try {
-    // List all users (up to 1000 at a time)
-    const allUsers: import('firebase-admin/auth').UserRecord[] = [];
-    let nextPageToken: string | undefined = undefined;
-    do {
-      const result = await adminAuth.listUsers(1000, nextPageToken);
-      allUsers.push(...result.users);
-      nextPageToken = result.pageToken;
-    } while (nextPageToken);
+    const supabase = await createClient();
+    const { searchParams } = new URL(request.url);
 
-    // Filter out admins
-    const students: { uid: string; email: string | null; creationTime: string | null; lastSignInTime: string | null }[] = [];
-    for (const user of allUsers) {
-      const isAdminUser = await isAdmin(user.uid);
-      if (!isAdminUser) {
-        students.push({
-          uid: user.uid,
-          email: user.email || null,
-          creationTime: user.metadata.creationTime || null,
-          lastSignInTime: user.metadata.lastSignInTime || null,
-        });
-      }
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const search = searchParams.get('search');
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
+    let query = supabase
+      .from('profiles')
+      .select('id, name, username, email, phone, class, created_at', { count: 'exact' })
+      .eq('role', 'student')
+      .order('created_at', { ascending: false });
+
+    if (search) {
+      query = query.or(
+        `name.ilike.%${search}%,username.ilike.%${search}%,email.ilike.%${search}%`
+      );
     }
 
-    return NextResponse.json({ students });
+    const { data, error, count } = await query.range(from, to);
+
+    if (error) {
+      console.error('Error listing students:', error);
+      return NextResponse.json({ error: 'Failed to list students' }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      students: data,
+      total: count ?? 0,
+      page,
+      limit,
+      totalPages: Math.ceil((count ?? 0) / limit),
+    });
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to list students', details: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
+    console.error('List students error:', error);
+    return NextResponse.json({ error: 'Failed to list students' }, { status: 500 });
   }
 }

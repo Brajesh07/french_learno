@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { Theme, ThemeContextType } from "@/lib/types";
+import { Theme, ThemeContextType } from "@/lib/theme-types";
 import { getFromLocalStorage, setToLocalStorage } from "@/lib/utils";
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -54,7 +54,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   };
 
   const toggleTheme = () => {
-    setTheme((prev) => (prev === "light" ? "dark" : "light"));
+    setTheme((prev: Theme) => (prev === "light" ? "dark" : "light"));
   };
 
   const value: ThemeContextType = {

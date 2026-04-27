@@ -1,54 +1,76 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { NextResponse, type NextRequest } from 'next/server';
 
-// Define protected routes
-const protectedRoutes = ['/dashboard'];
-const authRoutes = ['/login'];
+/**
+ * Supabase-aware middleware.
+ *
+ * Responsibilities:
+ * 1. Refresh the Supabase session cookie on every request (keeps sessions alive).
+ * 2. Redirect unauthenticated users away from protected routes.
+ * 3. Redirect authenticated users away from auth routes (e.g. /login).
+ */
+export async function middleware(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({ request });
 
-export function middleware(request: NextRequest) {
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          // Apply cookies to the request (for downstream server components)
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          );
+
+          // Re-create response so cookies are forwarded to the browser too
+          supabaseResponse = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          );
+        },
+      },
+    }
+  );
+
+  // IMPORTANT: Do not add any logic between createServerClient and getUser().
+  // A simple mistake can cause random logouts.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const { pathname } = request.nextUrl;
-  
-  // Check if the current path is a protected route
-  const isProtectedRoute = protectedRoutes.some(route => 
-    pathname.startsWith(route)
-  );
-  
-  // Check if the current path is an auth route
-  const isAuthRoute = authRoutes.some(route => 
-    pathname.startsWith(route)
-  );
 
-  // Get the session token from cookies
-  const sessionToken = request.cookies.get('__session')?.value;
-  
-  // If trying to access a protected route without a session
-  if (isProtectedRoute && !sessionToken) {
+  const isProtectedRoute = pathname.startsWith('/dashboard');
+  const isAuthRoute = pathname.startsWith('/login');
+
+  // Redirect unauthenticated users trying to access protected routes
+  if (isProtectedRoute && !user) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
   }
-  
-  // If trying to access auth routes with a valid session, redirect to dashboard
-  if (isAuthRoute && sessionToken) {
+
+  // Redirect authenticated users away from the login page
+  if (isAuthRoute && user) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
-  
-  // Allow root path to be handled by the page component
-  // The page component will handle authentication-based routing
-  
-  return NextResponse.next();
+
+  return supabaseResponse;
 }
 
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
+     * Match all request paths EXCEPT:
      * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
+     * - _next/image (image optimization)
+     * - favicon.ico
+     * - public folder assets
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|public).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

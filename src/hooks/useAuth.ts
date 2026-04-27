@@ -3,8 +3,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 /**
- * Custom hook to require authentication
- * Redirects to login page if user is not authenticated
+ * Require authentication — redirects to /login if not logged in.
  */
 export const useRequireAuth = () => {
   const { user, loading } = useAuth();
@@ -20,8 +19,7 @@ export const useRequireAuth = () => {
 };
 
 /**
- * Custom hook to redirect authenticated users
- * Useful for login page to redirect already authenticated users
+ * Redirect authenticated users away from a page (e.g. the login page).
  */
 export const useRedirectIfAuthenticated = (redirectTo: string = '/dashboard') => {
   const { user, loading } = useAuth();
@@ -37,9 +35,10 @@ export const useRedirectIfAuthenticated = (redirectTo: string = '/dashboard') =>
 };
 
 /**
- * Custom hook to check if user has specific role
+ * Require a specific role — redirects to /dashboard if role doesn't match.
+ * Currently only 'admin' is used; extend as needed.
  */
-export const useRequireRole = (requiredRole: 'admin' | 'superadmin' | 'teacher') => {
+export const useRequireRole = (requiredRole: 'admin' | 'student') => {
   const { user, loading } = useAuth();
   const router = useRouter();
 
@@ -47,15 +46,13 @@ export const useRequireRole = (requiredRole: 'admin' | 'superadmin' | 'teacher')
     if (!loading) {
       if (!user) {
         router.push('/login');
-      } else if (user.role !== requiredRole && requiredRole !== 'admin') {
-        // If requiring superadmin, redirect non-superadmin users
-        router.push('/dashboard'); // or show unauthorized page
+      } else if (user.role !== requiredRole) {
+        router.push('/dashboard');
       }
     }
   }, [user, loading, router, requiredRole]);
 
-  const hasRole = user?.role === requiredRole || 
-    (requiredRole === 'admin' && (user?.role === 'admin' || user?.role === 'superadmin'));
+  const hasRole = user?.role === requiredRole;
 
   return { user, loading, hasRole, isAuthenticated: !!user };
 };

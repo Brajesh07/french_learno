@@ -1,24 +1,29 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import {
-  User,
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-  AuthError,
-} from "firebase/auth";
-import { auth } from "@/lib/firebase";
-import { User as AppUser } from "@/lib/types";
+import type { User, Session } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
+
+// ----------------------------------------------------------------
+// Types
+// ----------------------------------------------------------------
+interface AppUser {
+  id: string;
+  email: string;
+  name: string;
+  username: string;
+  role: "admin" | "student";
+}
 
 interface AuthContextType {
   user: AppUser | null;
+  session: Session | null;
   loading: boolean;
   error: string | null;
-  login: (email: string, password: string) => Promise<void>;
+  /** Supports email OR username login */
+  login: (emailOrUsername: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
-  getIdToken: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,199 +36,182 @@ export const useAuth = () => {
   return context;
 };
 
-interface AuthProviderProps {
-  children: React.ReactNode;
-}
+// ----------------------------------------------------------------
+// Provider
+// ----------------------------------------------------------------
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const supabase = createClient();
 
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<AppUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const clearError = () => setError(null);
 
-  const login = async (email: string, password: string) => {
+  // ----------------------------------------------------------------
+  // Fetch profile from `profiles` table
+  // ----------------------------------------------------------------
+  const fetchProfile = async (supabaseUser: User): Promise<AppUser | null> => {
+    const { data, error: profileError } = await supabase
+      .from("profiles")
+      .select("id, name, username, email, role")
+      .eq("id", supabaseUser.id)
+      .single();
+
+    if (profileError || !data) {
+      console.error("Failed to fetch profile:", profileError?.message);
+      return null;
+    }
+
+    return {
+      id: data.id,
+      email: data.email,
+      name: data.name,
+      username: data.username,
+      role: data.role as "admin" | "student",
+    };
+  };
+
+  // ----------------------------------------------------------------
+  // Login — supports email OR username
+  // ----------------------------------------------------------------
+  const login = async (emailOrUsername: string, password: string) => {
     try {
       setError(null);
       setLoading(true);
 
-      // First, authenticate with Firebase
-      const result = await signInWithEmailAndPassword(auth, email, password);
+      let email = emailOrUsername.trim();
 
-      // Get the ID token
-      const idToken = await result.user.getIdToken();
+      // If the input doesn't contain '@', treat it as a username
+      if (!email.includes("@")) {
+        const { data: profileData, error: lookupError } = await supabase
+          .from("profiles")
+          .select("email")
+          .eq("username", email)
+          .single();
 
-      // Verify admin access through our API
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ idToken }),
-      });
+        if (lookupError || !profileData) {
+          setError("No account found with that username");
+          return;
+        }
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        // If not authorized as admin, sign out from Firebase
-        await signOut(auth);
-        throw new Error(data.error || "Not authorized as admin");
+        email = profileData.email;
       }
 
-      if (data.success && data.user) {
-        const appUser: AppUser = {
-          id: data.user.id,
-          email: data.user.email,
-          name: data.user.name,
-          role: data.user.role,
-          createdAt: new Date(), // We could get this from the API if needed
-          lastLoginAt: new Date(),
-        };
-        setUser(appUser);
-      }
-    } catch (err) {
-      const authError = err as AuthError;
-      console.error("Login error:", authError);
+      const { data, error: signInError } =
+        await supabase.auth.signInWithPassword({ email, password });
 
-      // Handle specific Firebase auth errors
-      if (authError.code) {
-        switch (authError.code) {
-          case "auth/user-not-found":
-            setError("No account found with this email address");
+      if (signInError) {
+        switch (signInError.message) {
+          case "Invalid login credentials":
+            setError("Incorrect email/username or password");
             break;
-          case "auth/wrong-password":
-            setError("Incorrect password");
-            break;
-          case "auth/invalid-email":
-            setError("Invalid email address");
-            break;
-          case "auth/user-disabled":
-            setError("This account has been disabled");
-            break;
-          case "auth/too-many-requests":
-            setError("Too many failed attempts. Please try again later");
-            break;
-          case "auth/network-request-failed":
-            setError(
-              "Network error. Please check your internet connection and try again."
-            );
-            break;
-          case "auth/timeout":
-            setError("Request timed out. Please try again.");
+          case "Email not confirmed":
+            setError("Please confirm your email address first");
             break;
           default:
-            setError(authError.message || "Failed to login");
+            setError(signInError.message || "Failed to login");
         }
-      } else {
-        // Handle our custom admin authorization errors
-        setError(authError.message || "Failed to login");
+        return;
       }
+
+      if (data.user) {
+        const profile = await fetchProfile(data.user);
+        if (!profile) {
+          await supabase.auth.signOut();
+          setError("User profile not found. Contact administrator.");
+          return;
+        }
+
+        // For admin dashboard: enforce admin role
+        if (profile.role !== "admin") {
+          await supabase.auth.signOut();
+          setError("Access denied: admin accounts only");
+          return;
+        }
+
+        setUser(profile);
+        setSession(data.session);
+      }
+    } catch (err) {
+      console.error("Login error:", err);
+      setError("An unexpected error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
+  // ----------------------------------------------------------------
+  // Logout
+  // ----------------------------------------------------------------
   const logout = async () => {
     try {
       setError(null);
-
-      // Call logout API to clear session cookie
-      await fetch("/api/auth/logout", {
-        method: "POST",
-      });
-
-      // Sign out from Firebase
-      await signOut(auth);
+      await supabase.auth.signOut();
       setUser(null);
+      setSession(null);
     } catch (err) {
       console.error("Logout error:", err);
       setError("Failed to logout");
     }
   };
 
+  // ----------------------------------------------------------------
+  // Restore session on mount
+  // ----------------------------------------------------------------
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(
-      auth,
-      async (firebaseUser: User | null) => {
-        try {
-          setLoading(true);
-          setError(null);
+    const initSession = async () => {
+      const {
+        data: { session: currentSession },
+      } = await supabase.auth.getSession();
 
-          if (firebaseUser) {
-            try {
-              // Get ID token and verify admin status
-              const idToken = await firebaseUser.getIdToken();
-
-              const response = await fetch("/api/auth/login", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ idToken }),
-              });
-
-              if (response.ok) {
-                const data = await response.json();
-                if (data.success && data.user) {
-                  const appUser: AppUser = {
-                    id: data.user.id,
-                    email: data.user.email,
-                    name: data.user.name,
-                    role: data.user.role,
-                    createdAt: new Date(),
-                    lastLoginAt: new Date(),
-                  };
-                  setUser(appUser);
-                } else {
-                  // Not authorized as admin
-                  setUser(null);
-                  await signOut(auth);
-                }
-              } else {
-                // API call failed, user not authorized
-                setUser(null);
-                await signOut(auth);
-              }
-            } catch (error) {
-              console.error("Admin verification failed:", error);
-              setUser(null);
-              await signOut(auth);
-            }
-          } else {
-            setUser(null);
-          }
-        } catch (err) {
-          console.error("Auth state change error:", err);
-          setError("Failed to load user data");
-          setUser(null);
-        } finally {
-          setLoading(false);
+      if (currentSession?.user) {
+        const profile = await fetchProfile(currentSession.user);
+        if (profile && profile.role === "admin") {
+          setUser(profile);
+          setSession(currentSession);
+        } else {
+          // Not an admin — clear session
+          await supabase.auth.signOut();
         }
       }
-    );
+      setLoading(false);
+    };
 
-    return unsubscribe;
+    initSession();
+
+    // Subscribe to auth state changes (e.g., token refresh, logout from other tab)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      if (event === "SIGNED_OUT" || !newSession) {
+        setUser(null);
+        setSession(null);
+      } else if (newSession?.user) {
+        const profile = await fetchProfile(newSession.user);
+        if (profile && profile.role === "admin") {
+          setUser(profile);
+          setSession(newSession);
+        }
+      }
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const getIdToken = async (): Promise<string | null> => {
-    try {
-      const currentUser = auth.currentUser;
-      if (!currentUser) return null;
-      return await currentUser.getIdToken();
-    } catch (error) {
-      console.error("Failed to get ID token:", error);
-      return null;
-    }
-  };
 
   const value: AuthContextType = {
     user,
+    session,
     loading,
     error,
     login,
     logout,
     clearError,
-    getIdToken,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
