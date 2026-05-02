@@ -257,3 +257,21 @@ It is:
 - production-ready
 
 ---
+
+❌ 1. RLS blocking profile insert (ROOT CAUSE)
+✅ Fix (do this first)
+Go to Supabase → SQL Editor and run:
+
+```
+-- allow users to insert their own profile
+create policy "Users can insert own profile"
+on public.profiles
+for insert
+with check (auth.uid() = id);
+
+-- allow users to read their own profile
+create policy "Users can read own profile"
+on public.profiles
+for select
+using (auth.uid() = id);
+```

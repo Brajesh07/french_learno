@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useAuth } from "@/components/auth/AuthProvider";
 
 interface Student {
-  uid: string;
+  id: string;
+  name: string | null;
+  username: string | null;
   email: string | null;
-  creationTime: string | null;
-  lastSignInTime: string | null;
+  created_at: string | null;
 }
 
 const StudentsPage: React.FC = () => {
@@ -15,10 +16,11 @@ const StudentsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
+  const userId = user?.id;
 
   useEffect(() => {
     const fetchStudents = async () => {
-      if (!user) {
+      if (!userId) {
         setError("Not authenticated");
         setLoading(false);
         return;
@@ -34,6 +36,7 @@ const StudentsPage: React.FC = () => {
         });
         if (!res.ok) throw new Error("Failed to fetch students");
         const data = await res.json();
+        console.log("[students page] API response:", data);
         setStudents(data.students || []);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Unknown error");
@@ -42,7 +45,7 @@ const StudentsPage: React.FC = () => {
       }
     };
     fetchStudents();
-  }, [user]);
+  }, [userId]);
 
   return (
     <div className="p-6">
@@ -61,21 +64,17 @@ const StudentsPage: React.FC = () => {
           </thead>
           <tbody>
             {students.map((student) => (
-              <tr key={student.uid} className="">
+              <tr key={student.id} className="">
                 <td className="py-2 px-4 border-b">{student.email}</td>
                 <td className="py-2 px-4 border-b">
-                  {student.creationTime
-                    ? new Date(student.creationTime).toLocaleString()
+                  {student.created_at
+                    ? new Date(student.created_at).toLocaleString()
                     : "-"}
                 </td>
-                <td className="py-2 px-4 border-b">
-                  {student.lastSignInTime
-                    ? new Date(student.lastSignInTime).toLocaleString()
-                    : "-"}
-                </td>
+                <td className="py-2 px-4 border-b">-</td>
                 <td className="py-2 px-4 border-b">
                   <Link
-                    href={`/dashboard/students/${student.uid}`}
+                    href={`/dashboard/students/${student.id}`}
                     className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-sm"
                   >
                     View

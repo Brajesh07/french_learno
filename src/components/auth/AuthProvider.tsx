@@ -1,6 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import type { User, Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 
@@ -49,30 +55,72 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Prevents onAuthStateChange from racing with an in-progress login() call.
+  const isHandlingLogin = useRef(false);
+
   const clearError = () => setError(null);
 
   // ----------------------------------------------------------------
-  // Fetch profile from `profiles` table
+  // Fetch profile via server-side API route.
+  // The route uses the service role key (bypasses RLS) so the result
+  // is never affected by RLS timing issues or missing policies.
+  // Requires an access token to authenticate the request server-side.
   // ----------------------------------------------------------------
-  const fetchProfile = async (supabaseUser: User): Promise<AppUser | null> => {
-    const { data, error: profileError } = await supabase
-      .from("profiles")
-      .select("id, name, username, email, role")
-      .eq("id", supabaseUser.id)
-      .single();
-
-    if (profileError || !data) {
-      console.error("Failed to fetch profile:", profileError?.message);
+  const fetchProfile = async (
+    supabaseUser: User | null | undefined,
+    accessToken?: string,
+  ): Promise<AppUser | null> => {
+    if (!supabaseUser?.id) {
+      console.warn(
+        "fetchProfile: called with no user or missing id — skipping",
+      );
       return null;
     }
 
-    return {
-      id: data.id,
-      email: data.email,
-      name: data.name,
-      username: data.username,
-      role: data.role as "admin" | "student",
-    };
+    if (!accessToken) {
+      console.warn("fetchProfile: no access token available — skipping");
+      return null;
+    }
+
+    console.log(
+      "fetchProfile: calling /api/auth/profile for user.id =",
+      supabaseUser.id,
+    );
+
+    try {
+      const res = await fetch("/api/auth/profile", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (res.status === 404) {
+        const body = await res.json();
+        console.warn("fetchProfile: profile not found —", body);
+        return null;
+      }
+
+      if (!res.ok) {
+        const body = await res.json();
+        console.error("fetchProfile: API error —", res.status, body);
+        return null;
+      }
+
+      const { profile } = await res.json();
+      console.log("fetchProfile: profile loaded —", {
+        id: profile.id,
+        role: profile.role,
+      });
+
+      return {
+        id: profile.id,
+        email: profile.email,
+        name: profile.name,
+        username: profile.username,
+        role: profile.role as "admin" | "student",
+      };
+    } catch (err) {
+      console.error("fetchProfile: fetch failed —", err);
+      return null;
+    }
   };
 
   // ----------------------------------------------------------------
@@ -83,18 +131,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setError(null);
       setLoading(true);
 
+      isHandlingLogin.current = true;
+
       let email = emailOrUsername.trim();
 
-      // If the input doesn't contain '@', treat it as a username
+      // If the input doesn't contain '@', treat it as a username.
+      // NOTE: uses maybeSingle() — anon users can't read profiles via RLS,
+      // so .single() would throw PGRST116 on a no-row result.
       if (!email.includes("@")) {
         const { data: profileData, error: lookupError } = await supabase
           .from("profiles")
           .select("email")
           .eq("username", email)
-          .single();
+          .maybeSingle();
 
         if (lookupError || !profileData) {
           setError("No account found with that username");
+          isHandlingLogin.current = false;
           return;
         }
 
@@ -115,14 +168,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           default:
             setError(signInError.message || "Failed to login");
         }
+        isHandlingLogin.current = false;
         return;
       }
 
-      if (data.user) {
-        const profile = await fetchProfile(data.user);
+      if (data.user && data.session) {
+        // Pass the access token directly so fetchProfile creates an authenticated
+        // client — this bypasses the async session state update on the shared
+        // browser client and guarantees RLS sees auth.uid() immediately.
+        const profile = await fetchProfile(
+          data.user,
+          data.session.access_token,
+        );
         if (!profile) {
           await supabase.auth.signOut();
-          setError("User profile not found. Contact administrator.");
+          setError(
+            "Admin profile not found. Ensure a profile row exists in the database for this user.",
+          );
+          isHandlingLogin.current = false;
           return;
         }
 
@@ -130,6 +193,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         if (profile.role !== "admin") {
           await supabase.auth.signOut();
           setError("Access denied: admin accounts only");
+          isHandlingLogin.current = false;
           return;
         }
 
@@ -140,6 +204,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       console.error("Login error:", err);
       setError("An unexpected error occurred. Please try again.");
     } finally {
+      isHandlingLogin.current = false;
       setLoading(false);
     }
   };
@@ -168,8 +233,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         data: { session: currentSession },
       } = await supabase.auth.getSession();
 
-      if (currentSession?.user) {
-        const profile = await fetchProfile(currentSession.user);
+      if (currentSession?.user && currentSession.access_token) {
+        const profile = await fetchProfile(
+          currentSession.user,
+          currentSession.access_token,
+        );
         if (profile && profile.role === "admin") {
           setUser(profile);
           setSession(currentSession);
@@ -187,11 +255,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      console.log("onAuthStateChange: event =", event);
+
       if (event === "SIGNED_OUT" || !newSession) {
         setUser(null);
         setSession(null);
-      } else if (newSession?.user) {
-        const profile = await fetchProfile(newSession.user);
+        setLoading(false);
+        return;
+      }
+
+      // TOKEN_REFRESHED fires frequently — just update the session object.
+      if (event === "TOKEN_REFRESHED") {
+        setSession(newSession);
+        setLoading(false);
+        return;
+      }
+
+      // SIGNED_IN fires during login() as well. If login() is already
+      // handling auth + profile loading, skip here to avoid a race condition
+      // where both run fetchProfile concurrently and one overwrites the other.
+      if (event === "SIGNED_IN" && isHandlingLogin.current) {
+        return;
+      }
+
+      if (newSession?.user && newSession.access_token) {
+        const profile = await fetchProfile(
+          newSession.user,
+          newSession.access_token,
+        );
         if (profile && profile.role === "admin") {
           setUser(profile);
           setSession(newSession);
