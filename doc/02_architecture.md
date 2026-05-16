@@ -4,250 +4,182 @@
 
 ## 1. 📌 Overview
 
-FrenchLearno is a full-stack system consisting of:
+FrenchLearno is a full-stack system consisting of three client applications that all share a single Supabase backend:
 
-- 📱 Mobile App (Student-facing)
-- 🖥️ Admin Dashboard (Admin-facing)
-- 🌐 Public Website (Marketing + CMS)
-- ⚙️ Backend (Supabase)
-
-All platforms communicate with a **single backend (Supabase)**.
+| Component          | Tech                               | Status                   |
+| ------------------ | ---------------------------------- | ------------------------ |
+| 📱 Mobile App      | React Native                       | ⚠️ Not built (APIs only) |
+| 🖥️ Admin Dashboard | Next.js (App Router)               | 🚧 ~65% complete         |
+| 🌐 Public Website  | Next.js (App Router)               | ⚠️ Not built             |
+| ⚙️ Backend / DB    | Supabase (PostgreSQL + Auth + RLS) | ⚠️ Not connected         |
 
 ---
 
 ## 2. 🧩 High-Level Architecture
 
-```txt
-Mobile App (React Native)
+```
+Mobile App (React Native)          ⚠️ Not yet built
         │
-        │
-Admin Dashboard (Next.js) ───→ Supabase (DB + Auth + Storage)
-        │
-        │
-Public Website (Next.js)
+        ↓
+Next.js API Layer ──────────────→ Supabase (DB + Auth + Storage)
+        ↑
+Admin Dashboard (Next.js)          🚧 In progress
+        ↑
+Public Website (Next.js)           ⚠️ Not yet built
 ```
 
----
-
-## 3. 🔐 Authentication Flow
-
-### Signup (Student)
-
-1. User fills:
-   - name
-   - username
-   - email
-   - password
-
-2. App calls:
-   - `supabase.auth.signUp()`
-
-3. Supabase:
-   - creates user in `auth.users`
-   - returns user ID (UUID)
-
-4. Store extra data in:
-   - `profiles` table
+All platforms are intended to communicate with a **single Supabase project**. The Next.js app (admin dashboard + public website) also hosts all API routes consumed by the mobile app.
 
 ---
 
-### Login (Email or Username)
+## 3. 🔧 Tech Stack per Component
 
-1. User enters:
-   - email OR username
-   - password
+### Admin Dashboard
 
-2. Logic:
-   - If input contains `@` → login with email
-   - Else → find email from username → then login
+- Next.js (App Router)
+- React, Tailwind CSS
+- Supabase JS client (server-side + client-side)
+- Role: admin only
 
-3. Supabase returns:
-   - JWT session
+### Public Website
 
----
+- Next.js (App Router)
+- React, Tailwind CSS
+- CMS content fetched via `/api/public/cms`
+- ⚠️ Not yet built
 
-## 4. 🧠 Core Backend Components
+### Mobile App
 
-### 4.1 Supabase Auth
+- React Native CLI
+- Consumes Next.js API routes (`/api/mobile/*`)
+- ⚠️ Frontend not built; API routes exist
 
-- Handles:
-  - signup
-  - login
-  - session management
+### Backend / Database
 
-- Uses JWT tokens
-
----
-
-### 4.2 Database (PostgreSQL)
-
-Main tables:
-
-- `profiles`
-- `courses`
-- `quizzes`
-- `quiz_questions`
-- `quiz_attempts`
-- `subscriptions`
-- `showcase_content`
+- Supabase: PostgreSQL + Auth (JWT) + Row Level Security
+- Cloudinary: media storage (images, audio, video)
+- ⚠️ Supabase environment variables not configured — app cannot run with real data
 
 ---
 
-### 4.3 Storage
+## 4. 🔄 Data Flow
 
-- Cloudinary:
-  - images
-  - videos
-  - audio
-
----
-
-## 5. 📱 Mobile App Flow
-
-```txt
-Login → Dashboard → Courses → Quiz → Result → Level Progression
+```
+Admin Dashboard
+    │
+    ├── Creates/edits courses, quizzes, CMS content
+    ↓
+Supabase (PostgreSQL + RLS)
+    │
+    ├── /api/mobile/courses      → Mobile App
+    ├── /api/mobile/quizzes      → Mobile App
+    ├── /api/mobile/quizzes/[id]/submit → Mobile App
+    └── /api/public/cms          → Public Website
 ```
 
-### Key Interactions:
-
-- Fetch courses
-- Attempt quizzes
-- Submit answers
-- View progress
+Admins write data through the dashboard. Mobile and public web clients read data through the Next.js API layer, which enforces role-based access before querying Supabase.
 
 ---
 
-## 6. 🖥️ Admin Dashboard Flow
+## 5. 🔐 Auth Architecture
 
-```txt
-Login → Dashboard → Manage Students / Courses / Quizzes / CMS
-```
+### Roles
 
-### Admin Actions:
+- `admin` — access to dashboard; can read/write all data
+- `student` — access to mobile app; read-only for courses/quizzes scoped to their level
 
-- Create courses
-- Create quizzes
-- Update student data
-- Manage subscriptions
-- Edit website content
+### Session Flow
 
----
+1. Admin logs in via email + password → Supabase Auth issues JWT
+2. JWT stored in session (server-side via `@supabase/ssr`)
+3. Middleware (`src/middleware.ts`) protects dashboard routes
+4. API routes verify session and role before returning data
 
-## 7. 🌐 Public Website Flow
+### Student Auth (mobile)
 
-```txt
-Visitor → /french-learning → Fetch CMS Content → Render Page
-```
-
-### Key Concept:
-
-- Fully dynamic content from database
-- No hardcoded data
+- Signup: name, username, email, phone, password → Supabase Auth + `profiles` table
+- Login: email or username + password → JWT session
+- ⚠️ Mobile auth UI does not exist yet
 
 ---
 
-## 8. 🔌 API Layer (Next.js)
+## 6. 🔌 API Surface
 
-Next.js acts as a **backend layer**:
+### Admin APIs (`/api/admin/*`)
 
-### Routes:
+| Endpoint                       | Method           | Status                             |
+| ------------------------------ | ---------------- | ---------------------------------- |
+| `/api/admin/courses`           | GET, POST        | ✅ Built                           |
+| `/api/admin/courses/[id]`      | GET, PUT, DELETE | ✅ Built                           |
+| `/api/admin/quizzes`           | GET, POST        | ✅ Built                           |
+| `/api/admin/quizzes/[id]`      | GET, PUT, DELETE | ✅ Built                           |
+| `/api/admin/cms`               | GET, PUT         | ✅ Built                           |
+| `/api/admin/cms/[section_key]` | GET, PUT         | ✅ Built                           |
+| `/api/admin/list-students`     | GET              | ✅ Built                           |
+| `/api/admin/student/[uid]`     | GET, PUT         | 🚧 Partially broken (API mismatch) |
 
-#### Admin APIs
+### Mobile APIs (`/api/mobile/*`)
 
-```txt
-/api/admin/students
-/api/admin/courses
-/api/admin/quizzes
-/api/admin/cms
-```
+| Endpoint                          | Method | Status   |
+| --------------------------------- | ------ | -------- |
+| `/api/mobile/courses`             | GET    | ✅ Built |
+| `/api/mobile/quizzes`             | GET    | ✅ Built |
+| `/api/mobile/quizzes/[id]`        | GET    | ✅ Built |
+| `/api/mobile/quizzes/[id]/submit` | POST   | ✅ Built |
 
-#### Mobile APIs
+### Auth APIs (`/api/auth/*`)
 
-```txt
-/api/mobile/courses
-/api/mobile/quizzes
-/api/mobile/submit
-```
+| Endpoint            | Method | Status   |
+| ------------------- | ------ | -------- |
+| `/api/auth/login`   | POST   | ✅ Built |
+| `/api/auth/logout`  | POST   | ✅ Built |
+| `/api/auth/profile` | GET    | ✅ Built |
 
----
+### Public APIs (`/api/public/*`)
 
-## 9. 🔒 Security Model
-
-### Authentication
-
-- Supabase JWT-based sessions
-
----
-
-### Authorization
-
-- Role-based:
-  - student
-  - admin
-
----
-
-### Data Protection
-
-- Row Level Security (RLS)
-- Admin-only routes protected
+| Endpoint          | Method | Status   |
+| ----------------- | ------ | -------- |
+| `/api/public/cms` | GET    | ✅ Built |
 
 ---
 
-## 10. ⚙️ Environment Setup
+## 7. 🗄️ Database Schema
 
-Two environments:
+Main tables (all in Supabase PostgreSQL):
 
-### Staging
+- `profiles` — student/admin user data
+- `courses` — course content per level
+- `quizzes` — quiz metadata
+- `quiz_questions` — questions per quiz
+- `quiz_attempts` — student attempt records
+- `subscriptions` — free/paid access control
+- `showcase_content` — CMS content for public website
 
-- Development & testing
-
-### Production
-
-- Live users
-
----
-
-### Flow:
-
-```txt
-Develop → Test (Staging) → Deploy → Production
-```
+Row Level Security (RLS) policies are defined for all tables. Full schema documented in [03_database_schema.md](./03_database_schema.md).
 
 ---
 
-## 11. 🧠 Key Design Decisions
+## 8. 🔒 Security Model
 
-### 1. Single Backend
-
-- All apps use same Supabase project
-
----
-
-### 2. Unified Auth System
-
-- No Firebase
-- No dual auth
+- **Supabase JWT** — all API calls require a valid session
+- **RLS policies** — enforced at the database layer; admins and students see only what their role permits
+- **Middleware** — Next.js middleware (`src/middleware.ts`) redirects unauthenticated users away from dashboard routes
+- **Admin-only routes** — `/api/admin/*` routes verify `admin` role before executing queries
 
 ---
 
-### 3. Relational Database
+## 9. 🚫 Not Yet Implemented
 
-- No nested collections
-- Clean joins
+| Area                  | Detail                                                 |
+| --------------------- | ------------------------------------------------------ |
+| Supabase connection   | Environment variables not set; all DB calls will fail  |
+| Mobile app frontend   | No React Native UI exists; only the API layer is ready |
+| Public website        | No Next.js pages for the public-facing site            |
+| CMS UI                | Admin CMS API is built; no dashboard UI to use it      |
+| Analytics page        | Not built; dashboard stats are hardcoded               |
+| Student system        | Partially broken — API mismatch and missing routes     |
+| Production deployment | No deployment configuration                            |
 
----
-
-### 4. CMS-Based Website
-
-- Admin-controlled content
-
----
-
-## 12. 🚀 Scalability Considerations
-
-- Add caching later (if needed)
-- Add CDN for media (Cloudinary already helps)
 - Add analytics later
 
 ---
