@@ -2,6 +2,21 @@
 
 ---
 
+## 🚨 Immediate Priorities (Do These First)
+
+These tasks are blocking further progress. Complete them in order:
+
+1. **Configure Supabase env vars** — Copy keys into `.env.local` so the app can run with real data
+2. **Fix API mismatch in student endpoints** — Use `GET /api/admin/students` and `GET/PATCH /api/admin/students/[id]` consistently (remove any `list-students` or `student/[uid]` usage)
+3. **Build `/test/student-login` web page** — Temporary web page to validate student auth + RLS before building React Native screens
+4. **Fix broken student system routes** — Reconcile and test all student API routes
+5. **Connect dashboard stats to real DB** — Replace hardcoded/fake stats with live Supabase queries
+6. **Build CMS UI in admin dashboard** — API exists (`/api/admin/cms`), frontend editor does not
+7. **Build mobile app frontend (React Native)** — API routes exist, no screens built
+8. **Build public website** — Separate Vercel project consuming `/api/public/cms`
+
+---
+
 ## 1. 📌 Overview
 
 This document breaks the project into **small, actionable tasks**.
@@ -15,9 +30,9 @@ Each section builds on the previous one.
 
 ### ✅ Setup Next.js App
 
-- [ ] Create Next.js project (App Router)
-- [ ] Install Tailwind CSS
-- [ ] Setup folder structure
+- [x] Create Next.js project (App Router)
+- [x] Install Tailwind CSS
+- [x] Setup folder structure
 
 ---
 
@@ -27,157 +42,143 @@ Each section builds on the previous one.
 npm install @supabase/supabase-js @supabase/ssr
 ```
 
-- [ ] Install Supabase client
-- [ ] Setup environment variables
+- [x] Install Supabase client
+- [ ] Setup environment variables ⚠️ **Blocking — env vars not configured**
 
 ---
 
 ### ✅ Setup Supabase Client
 
-- [ ] Create `lib/supabase/client.ts`
-- [ ] Create `lib/supabase/server.ts`
-- [ ] Test connection
-
----
+- [x] Create `lib/supabase/client.ts`
+- [x] Create `lib/supabase/server.ts`
+- [ ] Test connection (blocked by missing env vars)
 
 ---
 
 ## 3. 🔐 Phase 2 — Authentication
 
----
-
 ### ✅ Signup (Student)
 
-- [ ] Create signup form (mobile + web test page)
-- [ ] Call `supabase.auth.signUp()`
-- [ ] Insert data into `profiles` table
+- [x] Create signup form (mobile + web test page)
+- [x] Call `supabase.auth.signUp()`
+- [x] Insert data into `profiles` table
 
 ---
 
 ### ✅ Login
 
-- [ ] Create login form
-- [ ] Support:
+- [x] Create login form
+- [x] Support:
   - email login
   - username login
 
-- [ ] Fetch email from username (if needed)
+- [x] Fetch email from username (if needed)
 
 ---
 
 ### ✅ Auth State
 
-- [ ] Create AuthProvider
-- [ ] Manage session
-- [ ] Protect routes
-
----
+- [x] Create AuthProvider
+- [x] Manage session
+- [x] Protect routes
 
 ---
 
 ## 4. 🧑‍💼 Phase 3 — Admin Dashboard (Core)
 
----
-
 ### ✅ Layout
 
-- [ ] Sidebar (Dashboard, Students, Courses, Quizzes, CMS)
-- [ ] Header (user info, logout)
+- [x] Sidebar (Dashboard, Students, Courses, Quizzes, CMS)
+- [x] Header (user info, logout)
 
 ---
 
-### ✅ Students Module
+### 🚧 Students Module
 
-- [ ] Fetch students API
-- [ ] Display list
-- [ ] Edit student data
+- [x] Fetch students API (`GET /api/admin/students`)
+- [x] Display list
+- [ ] Fix endpoint naming mismatch ⚠️ **See Immediate Priorities #2**
+- [x] Edit student data (`PATCH /api/admin/students/[id]`)
 
 ---
+
+### 🚧 Dashboard Stats
+
+- [ ] Connect stats widgets to real DB queries ⚠️ **Currently hardcoded/fake**
 
 ---
 
 ## 5. 📚 Phase 4 — Courses
 
----
-
 ### ✅ Course CRUD
 
-- [ ] Create course form
-- [ ] Fetch courses list
-- [ ] Edit course
-- [ ] Delete course
+- [x] Create course form
+- [x] Fetch courses list
+- [x] Edit course
+- [x] Delete course
 
 ---
 
 ### ✅ Course Detail Page
 
-- [ ] Show course info
-- [ ] Show linked quizzes
-
----
+- [x] Show course info
+- [x] Show linked quizzes
 
 ---
 
 ## 6. 📝 Phase 5 — Quiz System (Admin)
 
----
-
 ### ✅ Create Quiz
 
-- [ ] Quiz form (title, course, passing score)
-- [ ] Replace course ID → dropdown
+- [x] Quiz form (title, course, passing score)
+- [x] Replace course ID → dropdown
 
 ---
 
-### ✅ Question Builder (IMPORTANT)
+### ✅ Question Builder
 
-- [ ] Add question UI
-- [ ] Add options dynamically
-- [ ] Select correct answer
-- [ ] Add explanation
-- [ ] Add points
+- [x] Add question UI
+- [x] Add options dynamically
+- [x] Select correct answer
+- [x] Add explanation
+- [x] Add points
 
 ---
 
 ### ✅ Live Preview
 
-- [ ] Right-side preview panel
-- [ ] Update on input change
+- [x] Right-side preview panel
+- [x] Update on input change
 
 ---
 
 ### ✅ Save Quiz
 
-- [ ] Create API call
-- [ ] Wrap in transaction
-- [ ] Store:
-  - quiz
-  - questions
-  - answers
-
----
+- [x] Create API call
+- [x] Wrap in transaction
+- [x] Store: quiz, questions, answers
 
 ---
 
 ## 7. 📱 Phase 6 — Mobile App (Student)
 
----
+> ⚠️ **Status: ~0–20% complete.** API routes exist on the backend but NO React Native frontend has been built.
 
-### ✅ Auth
+### ⚠️ Auth (Not built)
 
 - [ ] Signup screen
 - [ ] Login screen
 
 ---
 
-### ✅ Course List
+### ⚠️ Course List (Not built)
 
-- [ ] Fetch courses
+- [ ] Fetch courses (`GET /api/mobile/courses` exists)
 - [ ] Display by level
 
 ---
 
-### ✅ Quiz Flow
+### ⚠️ Quiz Flow (Not built)
 
 - [ ] Quiz list screen
 - [ ] Start quiz screen
@@ -187,42 +188,35 @@ npm install @supabase/supabase-js @supabase/ssr
 
 ---
 
-### ✅ Submit Quiz
+### ⚠️ Submit Quiz (Not built)
 
-- [ ] Send answers to API
+- [ ] Send answers to API (`POST /api/mobile/quizzes/[id]/submit` exists)
 - [ ] Show result screen
 
 ---
 
-### ✅ Review Answers
+### ⚠️ Review Answers (Not built)
 
 - [ ] Show correct vs wrong
 - [ ] Show explanation
 
 ---
 
----
-
 ## 8. 📊 Phase 7 — Progress & Tracking
 
----
-
-- [ ] Save quiz attempts
+- [ ] Save quiz attempts (API: `/api/mobile/quizzes/[id]/submit` saves attempt)
 - [ ] Calculate score
 - [ ] Update progress table
 - [ ] Unlock next level
-
----
+- [ ] Build `/api/mobile/progress` endpoint ⚠️ **Not built**
 
 ---
 
 ## 9. 🌐 Phase 8 — CMS (Website)
 
----
+### 🚧 Admin CMS (API Built, UI Missing)
 
-### ✅ Admin CMS
-
-- [ ] Create CMS editor page
+- [ ] Create CMS editor page ⚠️ **Not built — API exists, no frontend**
 - [ ] Edit sections:
   - hero
   - features
@@ -230,42 +224,32 @@ npm install @supabase/supabase-js @supabase/ssr
 
 ---
 
-### ✅ Public Page
+### ⚠️ Public Website (Not built)
 
-- [ ] Fetch CMS content
-- [ ] Render `/french-learning`
-
----
+- [ ] Create separate Next.js project (Vercel #2)
+- [ ] Fetch CMS content from `GET /api/public/cms`
+- [ ] Render homepage with CMS data
 
 ---
 
 ## 10. 💳 Phase 9 — Subscription (Basic)
 
----
-
 - [ ] Add subscription table logic
 - [ ] Mark user as paid/free
-- [ ] Restrict premium content
-
----
+- [ ] Restrict premium content in mobile app
 
 ---
 
 ## 11. 🔐 Phase 10 — Security
 
----
-
-- [ ] Enable RLS
-- [ ] Protect admin APIs
+- [x] Enable RLS
+- [x] Protect admin APIs
 - [ ] Validate all inputs
-
----
+- [ ] Audit all RLS policies end-to-end
 
 ---
 
 ## 12. 🚀 Phase 11 — Deployment
-
----
 
 ### Staging
 
@@ -276,27 +260,26 @@ npm install @supabase/supabase-js @supabase/ssr
 
 ### Production
 
-- [ ] Setup production env
-- [ ] Deploy Next.js app
-- [ ] Connect production Supabase
-
----
+- [ ] Setup production Supabase env vars
+- [ ] Deploy Admin Dashboard → Vercel Project #1
+- [ ] Deploy Public Website → Vercel Project #2 (separate project)
+- [ ] Both projects point to same Supabase instance
 
 ---
 
 ## 13. 🧠 Development Strategy
 
----
-
 ### ✅ Build Order (IMPORTANT)
 
 ```txt
-1. Supabase setup
-2. Auth
-3. Admin (courses + quizzes)
-4. Mobile quiz flow
-5. CMS
-6. Deployment
+1. Configure env vars (BLOCKING)
+2. Fix student API mismatch
+3. Build /test/student-login for auth validation
+4. Connect dashboard stats to DB
+5. Build CMS UI
+6. Build React Native mobile app
+7. Build public website
+8. Deployment
 ```
 
 ---
@@ -314,10 +297,12 @@ npm install @supabase/supabase-js @supabase/ssr
 Project is complete when:
 
 - [ ] Admin can create quizzes
-- [ ] Student can attempt quizzes
+- [ ] Student can attempt quizzes on mobile
 - [ ] Results are calculated correctly
 - [ ] Progress is tracked
-- [ ] CMS updates website dynamically
+- [ ] CMS updates public website dynamically
+- [ ] Admin Dashboard deployed to Vercel #1
+- [ ] Public Website deployed to Vercel #2
 
 ---
 

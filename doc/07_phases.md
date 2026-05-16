@@ -14,6 +14,34 @@ Each phase:
 
 ---
 
+## 🔴 Phase 0 — Fix & Connect (Current Priority)
+
+### 🎯 Goal
+
+Unblock the app so it can run with real data and fix known broken systems.
+
+---
+
+### Tasks
+
+- [ ] Configure Supabase env vars (`.env.local`) — **app cannot run without this**
+- [ ] Reconcile and fix student API endpoints — use `GET /api/admin/students` and `GET/PATCH /api/admin/students/[id]` consistently
+- [ ] Build `/test/student-login` web page — validate student auth and RLS logic before building React Native screens
+- [ ] Fix broken student system routes
+- [ ] Connect dashboard stats to real DB data — remove hardcoded/fake values
+- [ ] Build CMS UI in admin dashboard — API exists, no editor frontend built yet
+
+---
+
+### ✅ Output
+
+- App runs with real Supabase data
+- Student system fully functional end-to-end
+- Dashboard shows live stats
+- Admin can edit public website content via CMS UI
+
+---
+
 ## 2. 🧱 Phase 1 — Setup & Foundation
 
 ### 🎯 Goal
@@ -24,13 +52,13 @@ Prepare project and backend
 
 ### Tasks
 
-- [ ] Create Next.js project
-- [ ] Install Tailwind CSS
-- [ ] Setup Supabase project (staging)
-- [ ] Configure `.env.local`
-- [ ] Setup Supabase client (client + server)
-- [ ] Create database tables (run SQL)
-- [ ] Enable authentication (email/password)
+- [x] Create Next.js project
+- [x] Install Tailwind CSS
+- [x] Setup Supabase project (staging)
+- [ ] Configure `.env.local` ⚠️ **Not done — see Phase 0**
+- [x] Setup Supabase client (client + server)
+- [x] Create database tables (run SQL)
+- [x] Enable authentication (email/password)
 
 ---
 
@@ -52,18 +80,18 @@ User signup & login working
 
 ### Tasks
 
-- [ ] Create **web test signup page**
-- [ ] Implement:
+- [x] Create **web test signup page**
+- [x] Implement:
   - `supabase.auth.signUp()`
   - insert into `profiles`
 
-- [ ] Create login form
-- [ ] Implement:
+- [x] Create login form
+- [x] Implement:
   - email login
   - username login
 
-- [ ] Create AuthProvider
-- [ ] Protect routes
+- [x] Create AuthProvider
+- [x] Protect routes
 
 ---
 
@@ -87,11 +115,11 @@ Basic admin panel structure
 
 ### Tasks
 
-- [ ] Create dashboard layout
-- [ ] Sidebar navigation
-- [ ] Header with logout
-- [ ] Protect admin routes
-- [ ] Setup role check (`admin`)
+- [x] Create dashboard layout
+- [x] Sidebar navigation
+- [x] Header with logout
+- [x] Protect admin routes
+- [x] Setup role check (`admin`)
 
 ---
 
@@ -112,10 +140,10 @@ Admin can manage courses
 
 ### Tasks
 
-- [ ] Create course form
-- [ ] Fetch and display courses
-- [ ] Edit course
-- [ ] Delete course
+- [x] Create course form
+- [x] Fetch and display courses
+- [x] Edit course
+- [x] Delete course
 
 ---
 
@@ -135,14 +163,14 @@ Admin can create full quizzes
 
 ### Tasks
 
-- [ ] Create quiz form
-- [ ] Replace course ID with dropdown
-- [ ] Build question builder UI
-- [ ] Add dynamic options
-- [ ] Select correct answer
-- [ ] Add explanation & points
-- [ ] Implement live preview
-- [ ] Create API (transaction-based)
+- [x] Create quiz form
+- [x] Replace course ID with dropdown
+- [x] Build question builder UI
+- [x] Add dynamic options
+- [x] Select correct answer
+- [x] Add explanation & points
+- [x] Implement live preview
+- [x] Create API (transaction-based)
 
 ---
 
@@ -156,28 +184,35 @@ Admin can create full quizzes
 
 ### 🎯 Goal
 
-Student can use the app
+Student can use the app on React Native
+
+---
+
+> ⚠️ **Current Status:** Backend API routes exist (`/api/mobile/courses`, `/api/mobile/quizzes`, `/api/mobile/quizzes/[id]/submit`) but **NO React Native frontend has been built**. This phase starts from scratch on the frontend.
 
 ---
 
 ### Tasks
 
-- [ ] Setup React Native project
-- [ ] Implement auth (reuse logic)
-- [ ] Course list screen
-- [ ] Quiz list screen
+- [ ] Setup React Native project (Expo or bare)
+- [ ] Implement auth (reuse Supabase logic)
+- [ ] Course list screen (connect to `GET /api/mobile/courses`)
+- [ ] Quiz list screen (connect to `GET /api/mobile/quizzes?course_id=...`)
 - [ ] Quiz question screen
 - [ ] Timer implementation
 - [ ] Answer selection
+- [ ] Submit quiz screen (connect to `POST /api/mobile/quizzes/[id]/submit`)
+- [ ] Result screen
+- [ ] Build `/api/mobile/progress` endpoint (currently missing)
 
 ---
 
 ### ✅ Output
 
 - Student can:
-  - login
-  - view courses
-  - start quizzes
+  - login on mobile
+  - view courses by level
+  - start and complete quizzes
 
 ---
 
@@ -191,11 +226,11 @@ Complete quiz experience
 
 ### Tasks
 
-- [ ] Submit quiz API
-- [ ] Calculate score
-- [ ] Store attempt
-- [ ] Show result screen
-- [ ] Show review answers
+- [x] Submit quiz API
+- [x] Calculate score
+- [x] Store attempt
+- [ ] Show result screen (mobile frontend not built)
+- [ ] Show review answers (mobile frontend not built)
 
 ---
 
@@ -215,6 +250,7 @@ Track and unlock progress
 
 ### Tasks
 
+- [ ] Build `/api/mobile/progress` ⚠️ Not built
 - [ ] Save user progress
 - [ ] Unlock next level
 - [ ] Display progress in dashboard
@@ -237,15 +273,15 @@ Dynamic showcase page
 
 ### Tasks
 
-- [ ] Create CMS editor (admin)
-- [ ] Create `/french-learning` page
-- [ ] Fetch and render CMS content
+- [ ] Create CMS editor UI (admin dashboard) ⚠️ API exists, UI not built
+- [ ] Create separate Next.js project for Public Website (Vercel #2)
+- [ ] Fetch and render CMS content from `GET /api/public/cms`
 
 ---
 
 ### ✅ Output
 
-- Website content controlled by admin
+- Website content controlled by admin via CMS
 
 ---
 
@@ -260,7 +296,7 @@ Control free vs paid access
 ### Tasks
 
 - [ ] Add subscription logic
-- [ ] Restrict premium content
+- [ ] Restrict premium content in mobile app
 - [ ] Admin can mark user as paid
 
 ---
@@ -281,9 +317,9 @@ Secure and stable system
 
 ### Tasks
 
-- [ ] Enable RLS policies
-- [ ] Protect all APIs
-- [ ] Validate inputs
+- [x] Enable RLS policies
+- [x] Protect all APIs
+- [ ] Validate all inputs end-to-end
 - [ ] Test all flows
 - [ ] Fix bugs
 
@@ -306,17 +342,29 @@ Go live
 
 ### Tasks
 
-- [ ] Setup production Supabase
+- [ ] Setup production Supabase project
 - [ ] Push schema to production
-- [ ] Setup environment variables
-- [ ] Deploy Next.js app
+- [ ] Deploy **Admin Dashboard** → Vercel Project #1
+- [ ] Deploy **Public Website** → Vercel Project #2 (separate Vercel project / repo)
+- [ ] Both Vercel projects use the same Supabase instance (shared `SUPABASE_URL`)
+- [ ] Mobile app: prepare for Expo / app store release
 - [ ] Final testing
 
 ---
 
 ### ✅ Output
 
-- Live application
+- Live application across all three platforms
+
+---
+
+### 🗂️ Deployment Map
+
+| Platform        | Where               | Supabase           |
+| --------------- | ------------------- | ------------------ |
+| Admin Dashboard | Vercel Project #1   | ✅ Shared instance |
+| Public Website  | Vercel Project #2   | ✅ Shared instance |
+| Mobile App      | React Native / Expo | ✅ Shared instance |
 
 ---
 
@@ -326,7 +374,7 @@ Go live
 
 ### 🔥 Golden Rule
 
-```txt id="rule1"
+```txt
 Build → Test → Fix → Then Move Forward
 ```
 
@@ -344,10 +392,10 @@ Build → Test → Fix → Then Move Forward
 
 At the end, you will have:
 
-- 📱 Fully working mobile learning app
-- 🖥️ Admin dashboard
-- 🌐 Dynamic website
-- ⚙️ Scalable backend
+- 📱 Fully working mobile learning app (React Native)
+- 🖥️ Admin dashboard (Next.js — Vercel #1)
+- 🌐 Dynamic public website (Next.js — Vercel #2)
+- ⚙️ Scalable Supabase backend (shared)
 
 ---
 
