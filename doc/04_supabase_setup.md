@@ -184,6 +184,7 @@ Go to:
 ### RLS Policies — All Tables
 
 Apply the following policies via **SQL Editor**. The pattern is:
+
 - Students can read/write their own data
 - Admins have full access
 
@@ -377,10 +378,10 @@ Supabase setup includes:
 
 FrenchLearno uses **one Supabase project** shared across multiple deployments:
 
-| App                  | Deployment          | Supabase         |
-|----------------------|---------------------|------------------|
-| Admin Dashboard      | Vercel Project #1   | ✅ Shared instance |
-| Public/Showcase Site | Vercel Project #2   | ✅ Shared instance |
+| App                  | Deployment                | Supabase           |
+| -------------------- | ------------------------- | ------------------ |
+| Admin Dashboard      | Vercel Project #1         | ✅ Shared instance |
+| Public/Showcase Site | Vercel Project #2         | ✅ Shared instance |
 | Mobile App           | React Native (local/Expo) | ✅ Shared instance |
 
 > Both Vercel projects use the **same** `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Keep `.env` files in sync between the two projects.
