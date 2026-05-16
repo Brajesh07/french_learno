@@ -59,7 +59,7 @@ create table public.courses (
   title text not null,
   description text,
 
-  level text not null check (level in ('A1', 'B1', 'B2')),
+  level text not null check (level in ('A1', 'A2', 'B1', 'B2', 'C1', 'C2')),
 
   content_text text,
   content_audio_url text,
@@ -209,15 +209,22 @@ create table public.showcase_content (
 
 ```txt
 auth.users
-   ↓
+   ↓ (id → profiles.id)
 profiles
-   ↓
-quiz_attempts
-   ↓
-user_progress
+   ├─→ quiz_attempts  (profiles.id → quiz_attempts.user_id)
+   ├─→ user_progress  (profiles.id → user_progress.user_id)
+   └─→ subscriptions  (profiles.id → subscriptions.user_id)
 
-courses → quizzes → quiz_questions → quiz_answers
+courses
+   ↓ (courses.id → quizzes.course_id)
+quizzes
+   ↓ (quizzes.id → quiz_questions.quiz_id)
+quiz_questions
+   ↓ (quiz_questions.id → quiz_answers.question_id)
+quiz_answers
 ```
+
+> **Note:** `quiz_questions` and `quiz_answers` are linked via `question_id`. Each question has multiple answer options; `is_correct` marks the right answer.
 
 ---
 
@@ -231,7 +238,37 @@ courses → quizzes → quiz_questions → quiz_answers
 
 ---
 
-## 13. 🚀 Future Extensions
+## 13. ⚡ Performance: Recommended Indexes
+
+For production performance, add indexes on frequently queried foreign key columns:
+
+```sql
+-- quiz_attempts lookups
+create index on public.quiz_attempts (user_id);
+create index on public.quiz_attempts (quiz_id);
+
+-- user_progress lookups
+create index on public.user_progress (user_id);
+create index on public.user_progress (course_id);
+
+-- quizzes by course
+create index on public.quizzes (course_id);
+
+-- quiz_questions by quiz
+create index on public.quiz_questions (quiz_id);
+
+-- quiz_answers by question
+create index on public.quiz_answers (question_id);
+
+-- subscriptions by user
+create index on public.subscriptions (user_id);
+```
+
+> **Note:** These indexes are especially important as the student count grows. Add them after creating tables.
+
+---
+
+## 14. 🚀 Future Extensions
 
 - Add payments table (Razorpay/Stripe)
 - Add analytics tables
@@ -258,20 +295,26 @@ It is:
 
 ---
 
-❌ 1. RLS blocking profile insert (ROOT CAUSE)
-✅ Fix (do this first)
-Go to Supabase → SQL Editor and run:
+## 🛠️ RLS Fixes / Known Issues
 
-```
--- allow users to insert their own profile
+The following RLS policies must be applied manually via Supabase SQL Editor if profile inserts are being blocked.
+
+### ❌ Issue: RLS blocking profile insert (ROOT CAUSE)
+
+If users cannot insert their own profile after signup, run the following in **Supabase → SQL Editor**:
+
+```sql
+-- Allow users to insert their own profile
 create policy "Users can insert own profile"
 on public.profiles
 for insert
 with check (auth.uid() = id);
 
--- allow users to read their own profile
+-- Allow users to read their own profile
 create policy "Users can read own profile"
 on public.profiles
 for select
 using (auth.uid() = id);
 ```
+
+> ✅ Apply this fix before testing any auth flow.

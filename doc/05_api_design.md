@@ -7,9 +7,12 @@
 This document defines all API endpoints for:
 
 - 🖥️ Admin Dashboard
-- 📱 Mobile App
+- 📱 Mobile App (React Native)
+- 🌐 Public Website (separate Vercel project)
 
-All APIs are built using **Next.js API routes** and connected to **Supabase**.
+All APIs are built using **Next.js API routes** (in the Admin Dashboard project) and connected to **Supabase**.
+
+> **Status legend:** ✅ Built | 🚧 In Progress | ⚠️ Not built
 
 ---
 
@@ -30,15 +33,23 @@ All APIs are built using **Next.js API routes** and connected to **Supabase**.
 
 ### 3.1 Students
 
+> **Note:** The canonical student endpoint is `/api/admin/students`. Do **not** use `/api/admin/list-students` or `/api/admin/student/[uid]` — those are deprecated/incorrect naming.
+
+| Method | Endpoint                   | Description        | Status   |
+| ------ | -------------------------- | ------------------ | -------- |
+| GET    | `/api/admin/students`      | List all students  | ✅ Built |
+| GET    | `/api/admin/students/[id]` | Get student detail | ✅ Built |
+| PATCH  | `/api/admin/students/[id]` | Partial update     | ✅ Built |
+
 #### GET all students
 
-```http id="a1"
+```http
 GET /api/admin/students
 ```
 
 Response:
 
-```json id="a2"
+```json
 [
   {
     "id": "uuid",
@@ -51,13 +62,21 @@ Response:
 
 ---
 
-#### UPDATE student
+#### GET student detail
 
-```http id="a3"
-PATCH /api/admin/students/:id
+```http
+GET /api/admin/students/[id]
 ```
 
-```json id="a4"
+---
+
+#### PATCH student (partial update)
+
+```http
+PATCH /api/admin/students/[id]
+```
+
+```json
 {
   "name": "Updated Name",
   "level": "B1"
@@ -66,17 +85,22 @@ PATCH /api/admin/students/:id
 
 ---
 
----
-
 ### 3.2 Courses
+
+| Method | Endpoint                  | Description      | Status   |
+| ------ | ------------------------- | ---------------- | -------- |
+| POST   | `/api/admin/courses`      | Create course    | ✅ Built |
+| GET    | `/api/admin/courses`      | List all courses | ✅ Built |
+| PATCH  | `/api/admin/courses/[id]` | Partial update   | ✅ Built |
+| DELETE | `/api/admin/courses/[id]` | Delete course    | ✅ Built |
 
 #### CREATE course
 
-```http id="b1"
+```http
 POST /api/admin/courses
 ```
 
-```json id="b2"
+```json
 {
   "title": "React Basics",
   "level": "A1",
@@ -88,39 +112,44 @@ POST /api/admin/courses
 
 #### GET all courses
 
-```http id="b3"
+```http
 GET /api/admin/courses
 ```
 
 ---
 
-#### UPDATE course
+#### PATCH course (partial update)
 
-```http id="b4"
-PATCH /api/admin/courses/:id
+```http
+PATCH /api/admin/courses/[id]
 ```
 
 ---
 
 #### DELETE course
 
-```http id="b5"
-DELETE /api/admin/courses/:id
+```http
+DELETE /api/admin/courses/[id]
 ```
-
----
 
 ---
 
 ### 3.3 Quizzes
 
+| Method | Endpoint                  | Description      | Status   |
+| ------ | ------------------------- | ---------------- | -------- |
+| POST   | `/api/admin/quizzes`      | Create quiz      | ✅ Built |
+| GET    | `/api/admin/quizzes`      | List all quizzes | ✅ Built |
+| PATCH  | `/api/admin/quizzes/[id]` | Partial update   | ✅ Built |
+| DELETE | `/api/admin/quizzes/[id]` | Delete quiz      | ✅ Built |
+
 #### CREATE quiz (with questions)
 
-```http id="c1"
+```http
 POST /api/admin/quizzes
 ```
 
-```json id="c2"
+```json
 {
   "title": "React Quiz",
   "course_id": "course-id",
@@ -141,47 +170,50 @@ POST /api/admin/quizzes
 
 #### GET quizzes
 
-```http id="c3"
+```http
 GET /api/admin/quizzes
 ```
 
 ---
 
-#### UPDATE quiz
+#### PATCH quiz (partial update)
 
-```http id="c4"
-PATCH /api/admin/quizzes/:id
+```http
+PATCH /api/admin/quizzes/[id]
 ```
 
 ---
 
 #### DELETE quiz
 
-```http id="c5"
-DELETE /api/admin/quizzes/:id
+```http
+DELETE /api/admin/quizzes/[id]
 ```
 
 ---
 
----
+### 3.4 CMS (Admin — Public Content Control)
 
-### 3.4 CMS (Public Content)
+| Method | Endpoint                       | Description          | Status   |
+| ------ | ------------------------------ | -------------------- | -------- |
+| GET    | `/api/admin/cms`               | Get all CMS sections | ✅ Built |
+| PATCH  | `/api/admin/cms/[section_key]` | Update a section     | ✅ Built |
 
 #### GET content
 
-```http id="d1"
+```http
 GET /api/admin/cms
 ```
 
 ---
 
-#### UPDATE section
+#### PATCH section (partial update)
 
-```http id="d2"
-PATCH /api/admin/cms/:section_key
+```http
+PATCH /api/admin/cms/[section_key]
 ```
 
-```json id="d3"
+```json
 {
   "title": "Learn French Easily",
   "body": "Updated content..."
@@ -190,23 +222,57 @@ PATCH /api/admin/cms/:section_key
 
 ---
 
+## 4. 🌐 Public Website APIs
+
+> Consumed by the **Public/Showcase Website** (separate Vercel project). That project fetches content from the Admin Dashboard's API.
+
+| Method | Endpoint          | Description                   | Status   |
+| ------ | ----------------- | ----------------------------- | -------- |
+| GET    | `/api/public/cms` | Fetch all visible CMS content | ✅ Built |
+
+#### GET public CMS content
+
+```http
+GET /api/public/cms
+```
+
+Response:
+
+```json
+[
+  {
+    "section_key": "hero",
+    "title": "Learn French Easily",
+    "subtitle": "...",
+    "body": "...",
+    "is_visible": true
+  }
+]
+```
+
+> This endpoint is public (no auth required) and returns only sections where `is_visible = true`.
+
 ---
 
-## 4. 📱 Mobile APIs (Student)
+## 5. 📱 Mobile APIs (Student)
 
 ---
 
-### 4.1 Courses
+### 5.1 Courses
+
+| Method | Endpoint              | Description           | Status   |
+| ------ | --------------------- | --------------------- | -------- |
+| GET    | `/api/mobile/courses` | Get available courses | ✅ Built |
 
 #### GET available courses
 
-```http id="e1"
+```http
 GET /api/mobile/courses
 ```
 
 Response:
 
-```json id="e2"
+```json
 [
   {
     "id": "course-id",
@@ -218,13 +284,17 @@ Response:
 
 ---
 
----
+### 5.2 Quizzes
 
-### 4.2 Quizzes
+| Method | Endpoint                          | Description             | Status   |
+| ------ | --------------------------------- | ----------------------- | -------- |
+| GET    | `/api/mobile/quizzes`             | Get quizzes for course  | ✅ Built |
+| GET    | `/api/mobile/quizzes/[id]`        | Get quiz with questions | ✅ Built |
+| POST   | `/api/mobile/quizzes/[id]/submit` | Submit quiz answers     | ✅ Built |
 
 #### GET quizzes for course
 
-```http id="f1"
+```http
 GET /api/mobile/quizzes?course_id=123
 ```
 
@@ -232,13 +302,13 @@ GET /api/mobile/quizzes?course_id=123
 
 #### GET quiz details
 
-```http id="f2"
-GET /api/mobile/quizzes/:id
+```http
+GET /api/mobile/quizzes/[id]
 ```
 
 Response:
 
-```json id="f3"
+```json
 {
   "id": "quiz-id",
   "title": "React Quiz",
@@ -257,15 +327,17 @@ Response:
 
 ---
 
----
+### 5.3 Submit Quiz
 
-### 4.3 Submit Quiz
+| Method | Endpoint                          | Description         | Status   |
+| ------ | --------------------------------- | ------------------- | -------- |
+| POST   | `/api/mobile/quizzes/[id]/submit` | Submit quiz answers | ✅ Built |
 
-```http id="g1"
-POST /api/mobile/quizzes/:id/submit
+```http
+POST /api/mobile/quizzes/[id]/submit
 ```
 
-```json id="g2"
+```json
 {
   "answers": [
     {
@@ -276,11 +348,9 @@ POST /api/mobile/quizzes/:id/submit
 }
 ```
 
----
+Response:
 
-### Response:
-
-```json id="g3"
+```json
 {
   "score": 8,
   "total": 10,
@@ -291,50 +361,55 @@ POST /api/mobile/quizzes/:id/submit
 
 ---
 
----
+### 5.4 Progress
 
-### 4.4 Progress
+| Method | Endpoint               | Description       | Status       |
+| ------ | ---------------------- | ----------------- | ------------ |
+| GET    | `/api/mobile/progress` | Get user progress | ⚠️ Not built |
 
-#### GET user progress
-
-```http id="h1"
-GET /api/mobile/progress
-```
+> ⚠️ **Not built:** `/api/mobile/progress` is listed in the design but has **not been implemented**. Do not call this endpoint — it will return 404.
 
 ---
 
----
-
-## 5. 🔁 Data Flow Summary
+## 6. 🔁 Data Flow Summary
 
 ---
 
 ### Admin Flow
 
-```txt id="flow1"
+```txt
 Admin → Create Course → Create Quiz → Add Questions → Stored in DB
 ```
 
 ---
 
-### Student Flow
+### Student Flow (Mobile)
 
-```txt id="flow2"
+```txt
 Student → Fetch Quiz → Attempt → Submit → Get Result → Save Progress
 ```
 
 ---
 
-## 6. ⚠️ Important Notes
+### Public Website Flow
+
+```txt
+Public Website (Vercel #2) → GET /api/public/cms (Vercel #1 Admin) → Supabase → Render
+```
+
+---
+
+## 7. ⚠️ Important Notes
 
 - Never expose correct answers in quiz API
 - Validate all inputs
 - Use transactions for quiz creation
 - Protect all admin routes
+- Use **PATCH** for partial updates, **PUT** for full replacements (currently no PUT endpoints exist)
 
 ---
 
-## 7. 🚀 Future Enhancements
+## 8. 🚀 Future Enhancements
 
 - Pagination for large data
 - Search/filter APIs
@@ -347,8 +422,9 @@ Student → Fetch Quiz → Attempt → Submit → Get Result → Save Progress
 
 This API layer connects:
 
-- Admin → Database
+- Admin Dashboard → Database
 - Mobile App → Database
+- Public Website → Admin CMS API → Database
 
 It ensures:
 

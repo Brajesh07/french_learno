@@ -105,6 +105,20 @@ Go to:
 
 ---
 
+## 5.1 🚫 Disable Email Confirmation (Development Only)
+
+During development, disable email confirmation so you can test signups without needing a real email inbox.
+
+**Steps:**
+
+1. Go to: **Supabase → Authentication → Settings**
+2. Toggle **OFF**: "Enable email confirmations"
+3. Save changes
+
+> ⚠️ **Important:** Re-enable email confirmations before going to production. Leaving it disabled in production allows unverified accounts.
+
+---
+
 ## 6. 🧾 Create Database Tables
 
 Go to:
@@ -167,32 +181,120 @@ Go to:
 
 ---
 
-### Example Policy (Basic)
+### RLS Policies — All Tables
 
-Allow authenticated users:
+Apply the following policies via **SQL Editor**. The pattern is:
+
+- Students can read/write their own data
+- Admins have full access
 
 ```sql
-create policy "Allow logged in users"
-on public.profiles
-for select
+-- ─── profiles ───────────────────────────────────────────
+create policy "Users can insert own profile"
+on public.profiles for insert
+with check (auth.uid() = id);
+
+create policy "Users can read own profile"
+on public.profiles for select
 using (auth.uid() = id);
-```
 
----
+create policy "Users can update own profile"
+on public.profiles for update
+using (auth.uid() = id);
 
-### Admin-only example:
-
-```sql
-create policy "Admins only"
-on public.courses
-for all
+create policy "Admins full access to profiles"
+on public.profiles for all
 using (
-  exists (
-    select 1 from profiles
-    where profiles.id = auth.uid()
-    and profiles.role = 'admin'
-  )
+  exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'admin')
 );
+
+-- ─── courses ─────────────────────────────────────────────
+create policy "Admins manage courses"
+on public.courses for all
+using (
+  exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'admin')
+);
+
+create policy "Students can read published courses"
+on public.courses for select
+using (is_published = true);
+
+-- ─── quizzes ─────────────────────────────────────────────
+create policy "Admins manage quizzes"
+on public.quizzes for all
+using (
+  exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'admin')
+);
+
+create policy "Students can read published quizzes"
+on public.quizzes for select
+using (is_published = true);
+
+-- ─── quiz_questions ──────────────────────────────────────
+create policy "Admins manage quiz questions"
+on public.quiz_questions for all
+using (
+  exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'admin')
+);
+
+create policy "Students can read quiz questions"
+on public.quiz_questions for select
+using (auth.role() = 'authenticated');
+
+-- ─── quiz_answers ────────────────────────────────────────
+create policy "Admins manage quiz answers"
+on public.quiz_answers for all
+using (
+  exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'admin')
+);
+
+create policy "Students can read quiz answers"
+on public.quiz_answers for select
+using (auth.role() = 'authenticated');
+
+-- ─── quiz_attempts ───────────────────────────────────────
+create policy "Students manage own attempts"
+on public.quiz_attempts for all
+using (auth.uid() = user_id);
+
+create policy "Admins read all attempts"
+on public.quiz_attempts for select
+using (
+  exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'admin')
+);
+
+-- ─── user_progress ───────────────────────────────────────
+create policy "Students manage own progress"
+on public.user_progress for all
+using (auth.uid() = user_id);
+
+create policy "Admins read all progress"
+on public.user_progress for select
+using (
+  exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'admin')
+);
+
+-- ─── subscriptions ───────────────────────────────────────
+create policy "Students read own subscription"
+on public.subscriptions for select
+using (auth.uid() = user_id);
+
+create policy "Admins manage subscriptions"
+on public.subscriptions for all
+using (
+  exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'admin')
+);
+
+-- ─── showcase_content (CMS) ──────────────────────────────
+create policy "Admins manage CMS content"
+on public.showcase_content for all
+using (
+  exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'admin')
+);
+
+create policy "Public can read visible CMS content"
+on public.showcase_content for select
+using (is_visible = true);
 ```
 
 ---
@@ -269,6 +371,20 @@ Supabase setup includes:
 - Database schema setup
 - RLS security
 - Environment management
+
+---
+
+## 🗂️ Deployment Context
+
+FrenchLearno uses **one Supabase project** shared across multiple deployments:
+
+| App                  | Deployment                | Supabase           |
+| -------------------- | ------------------------- | ------------------ |
+| Admin Dashboard      | Vercel Project #1         | ✅ Shared instance |
+| Public/Showcase Site | Vercel Project #2         | ✅ Shared instance |
+| Mobile App           | React Native (local/Expo) | ✅ Shared instance |
+
+> Both Vercel projects use the **same** `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Keep `.env` files in sync between the two projects.
 
 ---
 
