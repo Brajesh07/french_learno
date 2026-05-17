@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/Input";
 
 export default function TempLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [emailOrUsername, setEmailOrUsername] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -18,6 +18,29 @@ export default function TempLoginPage() {
     e.preventDefault();
     setLoading(true);
     setMessage("");
+
+    let email = emailOrUsername.trim();
+
+    // Support username login
+    if (!email.includes("@")) {
+      try {
+        const res = await fetch(
+          `/api/auth/lookup-email?username=${encodeURIComponent(email)}`,
+        );
+        if (!res.ok) {
+          const body = await res.json();
+          setMessage("Error: " + (body.error || "Username not found"));
+          setLoading(false);
+          return;
+        }
+        const { email: resolvedEmail } = await res.json();
+        email = resolvedEmail;
+      } catch (err) {
+        setMessage("Error: Failed to verify username");
+        setLoading(false);
+        return;
+      }
+    }
 
     const supabase = createClient();
 
@@ -32,6 +55,16 @@ export default function TempLoginPage() {
       setMessage("Login error: " + error.message);
       setLoading(false);
       return;
+    }
+
+    // Notify admins that this student just logged in (fire-and-forget)
+    try {
+      await fetch("/api/auth/notify-login", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {
+      // Non-critical — proceed regardless
     }
 
     router.push("/temp/dashboard");
@@ -53,17 +86,17 @@ export default function TempLoginPage() {
           <div className="space-y-4">
             <div>
               <label
-                htmlFor="email"
+                htmlFor="emailOrUsername"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
               >
-                Email
+                Email or Username
               </label>
               <Input
-                id="email"
-                type="email"
-                placeholder="name@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="emailOrUsername"
+                type="text"
+                placeholder="Email or username"
+                value={emailOrUsername}
+                onChange={(e) => setEmailOrUsername(e.target.value)}
                 required
               />
             </div>

@@ -136,22 +136,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       let email = emailOrUsername.trim();
 
       // If the input doesn't contain '@', treat it as a username.
-      // NOTE: uses maybeSingle() — anon users can't read profiles via RLS,
-      // so .single() would throw PGRST116 on a no-row result.
       if (!email.includes("@")) {
-        const { data: profileData, error: lookupError } = await supabase
-          .from("profiles")
-          .select("email")
-          .eq("username", email)
-          .maybeSingle();
-
-        if (lookupError || !profileData) {
-          setError("No account found with that username");
+        try {
+          const res = await fetch(
+            `/api/auth/lookup-email?username=${encodeURIComponent(email)}`,
+          );
+          if (!res.ok) {
+            const body = await res.json();
+            setError(body.error || "No account found with that username");
+            isHandlingLogin.current = false;
+            setLoading(false);
+            return;
+          }
+          const { email: resolvedEmail } = await res.json();
+          email = resolvedEmail;
+        } catch (err) {
+          console.error("Username lookup failed:", err);
+          setError("Failed to verify username. Please try again.");
           isHandlingLogin.current = false;
+          setLoading(false);
           return;
         }
-
-        email = profileData.email;
       }
 
       const { data, error: signInError } =
@@ -241,10 +246,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         if (profile && profile.role === "admin") {
           setUser(profile);
           setSession(currentSession);
-        } else {
-          // Not an admin — clear session
-          await supabase.auth.signOut();
         }
+        // Non-admin user (e.g., student) — don't populate admin context,
+        // but do NOT sign them out. Their session stays valid for /temp routes.
       }
       setLoading(false);
     };

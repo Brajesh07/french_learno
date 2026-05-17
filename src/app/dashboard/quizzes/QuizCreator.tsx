@@ -61,11 +61,11 @@ export default function QuizCreator({
       setFormData((prev) => ({
         ...prev,
         questions: prev.questions.map((q) =>
-          q.id === questionId ? { ...q, ...updates } : q
+          q.id === questionId ? { ...q, ...updates } : q,
         ),
       }));
     },
-    []
+    [],
   );
 
   const removeQuestion = useCallback((questionId: string) => {
@@ -75,7 +75,7 @@ export default function QuizCreator({
     }));
   }, []);
 
-  const handleSave = async () => {
+  const handleSave = async (publishStatus: boolean = false) => {
     if (!user) {
       setFeedback({
         type: "error",
@@ -124,7 +124,7 @@ export default function QuizCreator({
       }
 
       const hasEmptyAnswers = question.answers.some(
-        (answer) => !answer.text.trim()
+        (answer) => !answer.text.trim(),
       );
       if (hasEmptyAnswers) {
         setFeedback({
@@ -139,10 +139,22 @@ export default function QuizCreator({
     setFeedback(null);
 
     try {
-      // Use finalCourseId in the submission
+      // Transform camelCase form data to snake_case API format
       const submissionData = {
-        ...formData,
-        courseId: finalCourseId,
+        title: formData.title,
+        description: formData.description,
+        course_id: finalCourseId,
+        passing_score: formData.passingScore,
+        is_published: publishStatus,
+        questions: formData.questions.map((q) => ({
+          question: q.question,
+          points: q.points,
+          explanation: q.explanation,
+          answers: q.answers.map((a) => ({
+            answer: a.text,
+            is_correct: a.id === q.correctAnswerId,
+          })),
+        })),
       };
 
       const response = await fetch("/api/admin/quizzes", {
@@ -160,7 +172,10 @@ export default function QuizCreator({
         throw new Error(result.error || "Failed to create quiz");
       }
 
-      setFeedback({ type: "success", message: "Quiz created successfully!" });
+      setFeedback({
+        type: "success",
+        message: `Quiz ${publishStatus ? "published" : "created"} successfully!`,
+      });
 
       // Reset form
       setFormData({
@@ -184,8 +199,7 @@ export default function QuizCreator({
   };
 
   const handlePublish = async () => {
-    // For now, just save as published
-    await handleSave();
+    await handleSave(true);
   };
 
   return (
@@ -337,7 +351,7 @@ export default function QuizCreator({
           {/* Action Buttons */}
           <div className="flex gap-4">
             <Button
-              onClick={handleSave}
+              onClick={() => handleSave()}
               disabled={isLoading}
               variant="outline"
               className="flex-1"

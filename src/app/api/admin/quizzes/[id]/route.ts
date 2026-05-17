@@ -30,10 +30,43 @@ export async function GET(
       .single();
 
     if (quizError || !quiz) {
-      return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
+      return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
     }
 
-    return NextResponse.json(quiz);
+    // Map to camelCase to match frontend interfaces
+    const mappedQuiz = {
+      id: quiz.id,
+      title: quiz.title,
+      description: quiz.description,
+      courseId: quiz.course_id,
+      passingScore: quiz.passing_score,
+      isPublished: quiz.is_published,
+      timeLimit: quiz.time_limit || 30, // Assuming default or from quiz
+      createdAt: quiz.created_at,
+      updatedAt: quiz.updated_at,
+      questions: (quiz.quiz_questions as {
+        id: string;
+        question: string;
+        type: string;
+        points: number;
+        explanation: string;
+        quiz_answers: { id: string; answer: string; is_correct: boolean }[];
+      }[]).map((q) => ({
+        id: q.id,
+        question: q.question,
+        type: q.type,
+        points: q.points,
+        explanation: q.explanation,
+        answers: q.quiz_answers.map((a) => ({
+          id: a.id,
+          text: a.answer,
+          isCorrect: a.is_correct,
+        })),
+        correctAnswerId: q.quiz_answers.find((a) => a.is_correct)?.id,
+      })),
+    };
+
+    return NextResponse.json(mappedQuiz);
   } catch (error) {
     console.error('Quiz GET [id] error:', error);
     return NextResponse.json({ error: 'Failed to fetch quiz' }, { status: 500 });

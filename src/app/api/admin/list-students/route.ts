@@ -36,16 +36,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { data, error, count } = await query.range(from, to);
-
-    console.log(
-      "[list-students] rows returned:",
-      data?.length ?? 0,
-      "total count:",
-      count,
-    );
-    console.log("[list-students] raw data:", data);
-    console.log("[list-students] error:", error);
+    const { data: profiles, error, count } = await query.range(from, to);
 
     if (error) {
       console.error("Error listing students:", error);
@@ -55,8 +46,27 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Enrich profiles with last_sign_in_at from auth.users
+    // For small paginated sets, fetching individually is acceptable for admin dashboard.
+    const enrichedStudents = await Promise.all(
+      (profiles ?? []).map(async (profile) => {
+        try {
+          const {
+            data: { user: authUser },
+          } = await supabase.auth.admin.getUserById(profile.id);
+          return {
+            ...profile,
+            last_login_at: authUser?.last_sign_in_at ?? null,
+          };
+        } catch (err) {
+          console.warn(`Failed to fetch auth data for user ${profile.id}:`, err);
+          return { ...profile, last_login_at: null };
+        }
+      }),
+    );
+
     return NextResponse.json({
-      students: data ?? [],
+      students: enrichedStudents,
       total: count ?? 0,
       page,
       limit,

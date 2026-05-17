@@ -107,25 +107,28 @@ Admins write data through the dashboard. Mobile and public web clients read data
 
 ### Admin APIs (`/api/admin/*`)
 
-| Endpoint                       | Method           | Status                             |
-| ------------------------------ | ---------------- | ---------------------------------- |
-| `/api/admin/courses`           | GET, POST        | ✅ Built                           |
-| `/api/admin/courses/[id]`      | GET, PUT, DELETE | ✅ Built                           |
-| `/api/admin/quizzes`           | GET, POST        | ✅ Built                           |
-| `/api/admin/quizzes/[id]`      | GET, PUT, DELETE | ✅ Built                           |
-| `/api/admin/cms`               | GET, PUT         | ✅ Built                           |
-| `/api/admin/cms/[section_key]` | GET, PUT         | ✅ Built                           |
-| `/api/admin/list-students`     | GET              | ✅ Built                           |
-| `/api/admin/student/[uid]`     | GET, PUT         | 🚧 Partially broken (API mismatch) |
+| Endpoint                       | Method             | Status                                |
+| ------------------------------ | ------------------ | ------------------------------------- |
+| `/api/admin/courses`           | GET, POST          | ✅ Built                              |
+| `/api/admin/courses/[id]`      | GET, PATCH, DELETE | ✅ Built                              |
+| `/api/admin/quizzes`           | GET, POST          | ✅ Built                              |
+| `/api/admin/quizzes/[id]`      | GET, PATCH, DELETE | ✅ Built                              |
+| `/api/admin/cms`               | GET                | ✅ Built                              |
+| `/api/admin/cms/[section_key]` | PATCH              | ✅ Built                              |
+| `/api/admin/students`          | GET                | ✅ Built                              |
+| `/api/admin/students/[id]`     | GET, PATCH         | 🚧 Partially broken (fix in progress) |
+
+> **Note:** `/api/admin/list-students` and `/api/admin/student/[uid]` are **deprecated** — do not use. The canonical endpoints are `/api/admin/students` and `/api/admin/students/[id]`.
 
 ### Mobile APIs (`/api/mobile/*`)
 
-| Endpoint                          | Method | Status   |
-| --------------------------------- | ------ | -------- |
-| `/api/mobile/courses`             | GET    | ✅ Built |
-| `/api/mobile/quizzes`             | GET    | ✅ Built |
-| `/api/mobile/quizzes/[id]`        | GET    | ✅ Built |
-| `/api/mobile/quizzes/[id]/submit` | POST   | ✅ Built |
+| Endpoint                          | Method | Status       |
+| --------------------------------- | ------ | ------------ |
+| `/api/mobile/courses`             | GET    | ✅ Built     |
+| `/api/mobile/quizzes`             | GET    | ✅ Built     |
+| `/api/mobile/quizzes/[id]`        | GET    | ✅ Built     |
+| `/api/mobile/quizzes/[id]/submit` | POST   | ✅ Built     |
+| `/api/mobile/progress`            | GET    | ⚠️ Not built |
 
 ### Auth APIs (`/api/auth/*`)
 
@@ -151,7 +154,9 @@ Main tables (all in Supabase PostgreSQL):
 - `courses` — course content per level
 - `quizzes` — quiz metadata
 - `quiz_questions` — questions per quiz
+- `quiz_answers` — answer options per question (`is_correct` marks the right answer)
 - `quiz_attempts` — student attempt records
+- `user_progress` — per-user course completion tracking
 - `subscriptions` — free/paid access control
 - `showcase_content` — CMS content for public website
 
@@ -179,8 +184,6 @@ Row Level Security (RLS) policies are defined for all tables. Full schema docume
 | Analytics page        | Not built; dashboard stats are hardcoded               |
 | Student system        | Partially broken — API mismatch and missing routes     |
 | Production deployment | No deployment configuration                            |
-
-- Add analytics later
 
 ---
 

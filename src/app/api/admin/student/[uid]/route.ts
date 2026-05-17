@@ -44,10 +44,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       email: authUser.email ?? null,
       creationTime: authUser.created_at ?? null,
       lastSignInTime: authUser.last_sign_in_at ?? null,
-      // isActive / hasSubscription are not in the current schema;
-      // returning safe defaults until columns are added.
-      isActive: profile ? true : false,
-      hasSubscription: false,
+      isActive: profile?.is_active ?? true,
+      hasSubscription: profile?.has_subscription ?? false,
       // include full profile for future use
       profile: profile ?? null,
     },
@@ -56,9 +54,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 // ----------------------------------------------------------------
 // PATCH /api/admin/student/[uid]
-// Updates student fields. isActive/hasSubscription are not yet
-// in the schema — updates to those fields are acknowledged but
-// not persisted until the columns exist.
+// Updates isActive and/or hasSubscription on the student's profile.
 // ----------------------------------------------------------------
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const auth = await requireAdmin(request);
@@ -71,7 +67,28 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
   const admin = await createAdminClient();
 
-  // Re-fetch current auth user to return an up-to-date response
+  // Build the update payload from whitelisted fields only
+  const updateData: Record<string, boolean> = {};
+  if ("isActive" in body) updateData.is_active = body.isActive;
+  if ("hasSubscription" in body)
+    updateData.has_subscription = body.hasSubscription;
+
+  if (Object.keys(updateData).length > 0) {
+    const { error: updateError } = await admin
+      .from("profiles")
+      .update(updateData)
+      .eq("id", uid);
+
+    if (updateError) {
+      console.error("[admin/student PATCH] update error:", updateError);
+      return NextResponse.json(
+        { error: updateError.message || "Failed to update student" },
+        { status: 500 },
+      );
+    }
+  }
+
+  // Re-fetch the updated record to return a consistent response
   const {
     data: { user: authUser },
     error: authError,
@@ -87,16 +104,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     .eq("id", uid)
     .maybeSingle();
 
-  // Reflect the requested change in the response (optimistic) even though
-  // isActive/hasSubscription have no backing column yet.
   return NextResponse.json({
     student: {
       uid: authUser.id,
       email: authUser.email ?? null,
       creationTime: authUser.created_at ?? null,
       lastSignInTime: authUser.last_sign_in_at ?? null,
-      isActive: "isActive" in body ? body.isActive : profile ? true : false,
-      hasSubscription: "hasSubscription" in body ? body.hasSubscription : false,
+      isActive: profile?.is_active ?? true,
+      hasSubscription: profile?.has_subscription ?? false,
       profile: profile ?? null,
     },
   });

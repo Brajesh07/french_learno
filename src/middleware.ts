@@ -1,5 +1,5 @@
-import { createServerClient } from '@supabase/ssr';
-import { NextResponse, type NextRequest } from 'next/server';
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
 
 /**
  * Supabase-aware middleware.
@@ -23,17 +23,17 @@ export async function middleware(request: NextRequest) {
         setAll(cookiesToSet) {
           // Apply cookies to the request (for downstream server components)
           cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
+            request.cookies.set(name, value),
           );
 
           // Re-create response so cookies are forwarded to the browser too
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, options),
           );
         },
       },
-    }
+    },
   );
 
   // IMPORTANT: Do not add any logic between createServerClient and getUser().
@@ -44,19 +44,25 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  const isProtectedRoute = pathname.startsWith('/dashboard');
-  const isAuthRoute = pathname.startsWith('/login');
+  const isProtectedRoute = pathname.startsWith("/dashboard");
+  const isAuthRoute = pathname.startsWith("/login");
+  const isTempProtectedRoute = pathname.startsWith("/temp/dashboard");
 
   // Redirect unauthenticated users trying to access protected routes
   if (isProtectedRoute && !user) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
   // Redirect authenticated users away from the login page
   if (isAuthRoute && user) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  // Redirect unauthenticated users from /temp/dashboard to /temp/login
+  if (isTempProtectedRoute && !user) {
+    return NextResponse.redirect(new URL("/temp/login", request.url));
   }
 
   return supabaseResponse;
@@ -71,6 +77,6 @@ export const config = {
      * - favicon.ico
      * - public folder assets
      */
-    '/((?!_next/static|_next/image|favicon.ico|public|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    "/((?!_next/static|_next/image|favicon.ico|public|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

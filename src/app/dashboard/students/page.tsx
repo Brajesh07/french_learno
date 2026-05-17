@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { Button } from "@/components/ui/Button";
 
 interface Student {
   id: string;
@@ -9,6 +10,7 @@ interface Student {
   username: string | null;
   email: string | null;
   created_at: string | null;
+  last_login_at: string | null;
 }
 
 const StudentsPage: React.FC = () => {
@@ -36,7 +38,6 @@ const StudentsPage: React.FC = () => {
         });
         if (!res.ok) throw new Error("Failed to fetch students");
         const data = await res.json();
-        console.log("[students page] API response:", data);
         setStudents(data.students || []);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Unknown error");
@@ -48,42 +49,134 @@ const StudentsPage: React.FC = () => {
   }, [userId]);
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Registered Students</h1>
-      {loading && <div>Loading students...</div>}
-      {error && <div className="text-red-500">{error}</div>}
-      {!loading && !error && (
-        <table className="min-w-full border border-black">
-          <thead>
-            <tr className="">
-              <th className="py-2 px-4 border-b">Email</th>
-              <th className="py-2 px-4 border-b">Sign-up Date</th>
-              <th className="py-2 px-4 border-b">Last Login Date</th>
-              <th className="py-2 px-4 border-b">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {students.map((student) => (
-              <tr key={student.id} className="">
-                <td className="py-2 px-4 border-b">{student.email}</td>
-                <td className="py-2 px-4 border-b">
-                  {student.created_at
-                    ? new Date(student.created_at).toLocaleString()
-                    : "-"}
-                </td>
-                <td className="py-2 px-4 border-b">-</td>
-                <td className="py-2 px-4 border-b">
-                  <Link
-                    href={`/dashboard/students/${student.id}`}
-                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-sm"
+    <div className="p-6 max-w-7xl mx-auto">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            Registered Students
+          </h1>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            Manage your student community and their subscriptions.
+          </p>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        </div>
+      ) : error ? (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-lg">
+          <p className="font-medium">Error loading students</p>
+          <p className="text-sm">{error}</p>
+        </div>
+      ) : (
+        <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-800/50">
+                <tr>
+                  <th
+                    scope="col"
+                    className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                   >
-                    View
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                    Student
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                  >
+                    Sign-up Date
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                  >
+                    Last Login
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-4 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                  >
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
+                {students.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className="px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400"
+                    >
+                      No students found.
+                    </td>
+                  </tr>
+                ) : (
+                  students.map((student) => (
+                    <tr
+                      key={student.id}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-10 w-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                            <span className="text-blue-600 dark:text-blue-400 font-semibold">
+                              {student.email
+                                ? student.email.charAt(0).toUpperCase()
+                                : "S"}
+                            </span>
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">
+                              {student.name || "Anonymous Student"}
+                            </div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                              {student.email}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
+                        {student.created_at
+                          ? new Date(student.created_at).toLocaleDateString(
+                              undefined,
+                              {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              }
+                            )
+                          : "-"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
+                        {student.last_login_at
+                          ? new Date(student.last_login_at).toLocaleDateString(
+                              undefined,
+                              {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }
+                            )
+                          : "Never"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <Link href={`/dashboard/students/${student.id}`}>
+                          <Button variant="outline" size="sm">
+                            View Details
+                          </Button>
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
     </div>
   );
