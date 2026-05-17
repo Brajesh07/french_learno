@@ -38,9 +38,15 @@ export async function middleware(request: NextRequest) {
 
   // IMPORTANT: Do not add any logic between createServerClient and getUser().
   // A simple mistake can cause random logouts.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch {
+    // If the auth check fails (e.g. network error, missing env vars),
+    // fall through and let route handlers deal with auth instead of crashing.
+    return supabaseResponse;
+  }
 
   const { pathname } = request.nextUrl;
 
