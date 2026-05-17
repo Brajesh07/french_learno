@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { QuizFormData, QuizQuestionFormData } from "@/lib/types";
 import QuizQuestionForm from "./QuizQuestionForm";
 import QuizPreview from "./QuizPreview";
@@ -13,14 +13,17 @@ import { generateId } from "@/lib/utils";
 interface QuizCreatorProps {
   courseId?: string;
   courseTitle?: string;
+  quizId?: string;
 }
 
 export default function QuizCreator({
   courseId: initialCourseId,
   courseTitle,
+  quizId,
 }: QuizCreatorProps) {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(!!quizId);
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
     message: string;
@@ -34,6 +37,61 @@ export default function QuizCreator({
     passingScore: 70,
     questions: [],
   });
+
+  // Fetch quiz data if in edit mode
+  useEffect(() => {
+    if (quizId) {
+      const fetchQuiz = async () => {
+        try {
+          setIsFetching(true);
+          const response = await fetch(`/api/admin/quizzes/${quizId}`, {
+            credentials: "include",
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch quiz data");
+          }
+
+          const quiz = await response.json();
+
+          setFormData({
+            title: quiz.title || "",
+            description: quiz.description || "",
+            courseId: quiz.courseId || "",
+            timeLimit: quiz.timeLimit || 30,
+            passingScore: quiz.passingScore || 70,
+            questions: (quiz.questions || []).map((q: {
+              id: string;
+              question: string;
+              points: number;
+              explanation?: string;
+              correctAnswerId?: string;
+              answers: { id: string; text: string }[];
+            }) => ({
+              id: q.id,
+              question: q.question,
+              points: q.points,
+              explanation: q.explanation || "",
+              correctAnswerId: q.correctAnswerId,
+              answers: (q.answers || []).map((a: { id: string; text: string }) => ({
+                id: a.id,
+                text: a.text,
+              })),
+            })),
+          });
+        } catch (error) {
+          console.error("Error fetching quiz:", error);
+          setFeedback({
+            type: "error",
+            message: "Failed to load quiz data for editing",
+          });
+        } finally {
+          setIsFetching(false);
+        }
+      };
+      fetchQuiz();
+    }
+  }, [quizId]);
 
   const addQuestion = useCallback(() => {
     const newQuestion: QuizQuestionFormData = {
@@ -157,8 +215,11 @@ export default function QuizCreator({
         })),
       };
 
-      const response = await fetch("/api/admin/quizzes", {
-        method: "POST",
+      const url = quizId ? `/api/admin/quizzes/${quizId}` : "/api/admin/quizzes";
+      const method = quizId ? "PATCH" : "POST";
+
+      const response = await fetch(url, {
+        method,
         headers: {
           "Content-Type": "application/json",
         },
@@ -169,29 +230,31 @@ export default function QuizCreator({
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || "Failed to create quiz");
+        throw new Error(result.error || `Failed to ${quizId ? "update" : "create"} quiz`);
       }
 
       setFeedback({
         type: "success",
-        message: `Quiz ${publishStatus ? "published" : "created"} successfully!`,
+        message: `Quiz ${quizId ? "updated" : (publishStatus ? "published" : "created")} successfully!`,
       });
 
-      // Reset form
-      setFormData({
-        title: "",
-        description: "",
-        courseId: initialCourseId || "",
-        timeLimit: 30,
-        passingScore: 70,
-        questions: [],
-      });
+      if (!quizId) {
+        // Reset form only on creation
+        setFormData({
+          title: "",
+          description: "",
+          courseId: initialCourseId || "",
+          timeLimit: 30,
+          passingScore: 70,
+          questions: [],
+        });
+      }
     } catch (error) {
-      console.error("Error creating quiz:", error);
+      console.error(`Error ${quizId ? "updating" : "creating"} quiz:`, error);
       setFeedback({
         type: "error",
         message:
-          error instanceof Error ? error.message : "Failed to create quiz",
+          error instanceof Error ? error.message : `Failed to ${quizId ? "update" : "create"} quiz`,
       });
     } finally {
       setIsLoading(false);
@@ -201,6 +264,15 @@ export default function QuizCreator({
   const handlePublish = async () => {
     await handleSave(true);
   };
+
+  if (isFetching) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span className="ml-2">Loading quiz data...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto">

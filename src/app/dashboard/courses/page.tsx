@@ -112,7 +112,7 @@ export default function CoursesPage() {
 
     try {
       const response = await fetch(`/api/admin/courses/${courseId}`, {
-        method: "PUT",
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
@@ -122,8 +122,15 @@ export default function CoursesPage() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to update course");
+        let errorMessage = "Failed to update course";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          // If response is not JSON (e.g., 405 error page)
+          errorMessage = `Error ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
 
       // Refresh the courses list

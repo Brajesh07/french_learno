@@ -28,6 +28,15 @@ interface Result {
   passed: boolean;
   correct: number;
   total: number;
+  breakdown: {
+    questionId: string;
+    question: string;
+    selectedAnswerId: string;
+    selectedAnswer: string;
+    correctAnswerId: string | null;
+    correctAnswer: string;
+    isCorrect: boolean;
+  }[];
 }
 
 export default function QuizForm({ quiz }: { quiz: Quiz }) {
@@ -69,6 +78,7 @@ export default function QuizForm({ quiz }: { quiz: Quiz }) {
         passed: data.passed,
         correct: data.correct,
         total: data.total,
+        breakdown: data.breakdown ?? [],
       });
     } catch {
       setError("Network error. Please try again.");
@@ -81,6 +91,7 @@ export default function QuizForm({ quiz }: { quiz: Quiz }) {
   if (result) {
     return (
       <div className="space-y-6">
+        {/* Score card */}
         <div
           className={`rounded-2xl border p-8 text-center ${
             result.passed
@@ -111,6 +122,61 @@ export default function QuizForm({ quiz }: { quiz: Quiz }) {
             {quiz.passing_score}%
           </p>
         </div>
+
+        {/* Per-question breakdown */}
+        {result.breakdown.length > 0 && (
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              Question Review
+            </h3>
+            {result.breakdown.map((item, idx) => (
+              <div
+                key={item.questionId}
+                className={`rounded-xl border p-4 ${
+                  item.isCorrect
+                    ? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/10"
+                    : "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/10"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <span
+                    className={`mt-0.5 shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold ${
+                      item.isCorrect ? "bg-green-500" : "bg-red-500"
+                    }`}
+                  >
+                    {item.isCorrect ? "✓" : "✗"}
+                  </span>
+                  <div className="flex-1 space-y-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      <span className="text-gray-400 dark:text-gray-500 font-normal mr-1">
+                        Q{idx + 1}.
+                      </span>
+                      {item.question}
+                    </p>
+                    <p
+                      className={`text-xs ${
+                        item.isCorrect
+                          ? "text-green-700 dark:text-green-400"
+                          : "text-red-700 dark:text-red-400"
+                      }`}
+                    >
+                      Your answer:{" "}
+                      <span className="font-medium">{item.selectedAnswer}</span>
+                    </p>
+                    {!item.isCorrect && item.correctAnswer && (
+                      <p className="text-xs text-green-700 dark:text-green-400">
+                        Correct answer:{" "}
+                        <span className="font-medium">
+                          {item.correctAnswer}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="flex gap-3 flex-wrap">
           <button

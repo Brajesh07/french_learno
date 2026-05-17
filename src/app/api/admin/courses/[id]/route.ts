@@ -21,24 +21,9 @@ function transformCourse(row: Record<string, unknown>) {
   };
 }
 
-/** Transform a raw snake_case DB quiz row into the camelCase shape the frontend expects. */
-function transformQuiz(row: Record<string, unknown>) {
-  return {
-    id: row.id,
-    title: row.title,
-    description: row.description ?? "",
-    courseId: row.course_id,
-    passingScore: row.passing_score ?? 70,
-    isPublished: row.is_published ?? false,
-    questions: [],
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
-
 // ----------------------------------------------------------------
 // GET /api/admin/courses/:id
-// Returns a single course with its linked quizzes.
+// Returns a single course with its linked quizzes (including questions/answers).
 // ----------------------------------------------------------------
 export async function GET(
   request: NextRequest,
@@ -63,7 +48,7 @@ export async function GET(
 
     const { data: quizzes, error: quizzesError } = await supabase
       .from("quizzes")
-      .select("*")
+      .select("*, quiz_questions(*, quiz_answers(*))")
       .eq("course_id", id)
       .order("created_at", { ascending: true });
 
@@ -71,9 +56,56 @@ export async function GET(
       console.error("Error fetching quizzes for course:", quizzesError);
     }
 
+    // Transform course
+    const transformedCourse = transformCourse(course);
+
+    // Transform quizzes
+    const transformedQuizzes = (quizzes ?? []).map((q: {
+      id: string;
+      title: string;
+      description: string | null;
+      course_id: string;
+      passing_score: number | null;
+      is_published: boolean | null;
+      created_at: string;
+      updated_at: string;
+      quiz_questions: {
+        id: string;
+        question: string;
+        type: string;
+        points: number;
+        explanation: string | null;
+        quiz_answers: { id: string; answer: string; is_correct: boolean }[];
+      }[];
+    }) => ({
+      id: q.id,
+      title: q.title,
+      description: q.description || "",
+      courseId: q.course_id,
+      passingScore: q.passing_score ?? 70,
+      isPublished: q.is_published ?? false,
+      createdAt: q.created_at,
+      updatedAt: q.updated_at,
+      questions: (q.quiz_questions || []).map((question) => ({
+        id: question.id,
+        question: question.question,
+        type: question.type,
+        points: question.points,
+        explanation: question.explanation,
+        answers: (question.quiz_answers || []).map((answer) => ({
+          id: answer.id,
+          text: answer.answer,
+          isCorrect: answer.is_correct,
+        })),
+        correctAnswerId: (question.quiz_answers || []).find(
+          (a) => a.is_correct,
+        )?.id,
+      })),
+    }));
+
     return NextResponse.json({
-      course: transformCourse(course),
-      quizzes: (quizzes ?? []).map(transformQuiz),
+      course: transformedCourse,
+      quizzes: transformedQuizzes,
     });
   } catch (error) {
     console.error("Course GET [id] error:", error);

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import { createNotification } from "@/lib/supabase/notifications";
 
 /**
@@ -40,67 +41,120 @@ export async function POST(
       );
     }
 
+    // Use admin client for all data reads — auth is already verified above
+    const adminSupabase = await createAdminClient();
+
     // 1. Fetch the quiz with its title and passing score
-    const { data: quiz, error: quizError } = await supabase
+    const { data: quiz, error: quizError } = await adminSupabase
       .from("quizzes")
       .select("id, title, passing_score")
       .eq("id", id)
-      .eq("is_published", true)
       .single();
 
     if (quizError || !quiz) {
       return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
     }
 
-    // 2. Fetch all correct answers for this quiz
-    const { data: correctAnswers, error: answersError } = await supabase
-      .from("quiz_answers")
-      .select("id, question_id, is_correct")
-      .in(
-        "question_id",
-        answers.map((a: { question_id: string }) => a.question_id),
-      )
-      .eq("is_correct", true);
+    const questionIds = answers.map(
+      (a: { question_id: string }) => a.question_id,
+    );
+
+    // 2. Fetch question text + ALL answers (text + is_correct) for these questions
+    const [{ data: questions }, { data: allAnswers, error: answersError }] =
+      await Promise.all([
+        adminSupabase
+          .from("quiz_questions")
+          .select("id, question")
+          .in("id", questionIds),
+        adminSupabase
+          .from("quiz_answers")
+          .select("id, question_id, answer, is_correct")
+          .in("question_id", questionIds),
+      ]);
 
     if (answersError) {
-      console.error("Error fetching correct answers:", answersError);
+      console.error("Error fetching answers:", answersError);
       return NextResponse.json(
         { error: "Failed to grade quiz" },
         { status: 500 },
       );
     }
 
-    // 3. Calculate score
-    const correctAnswerMap = new Map(
-      (correctAnswers ?? []).map((a) => [a.question_id, a.id]),
+    // 3. Build lookup maps
+    const questionTextMap = new Map(
+      (questions ?? []).map((q) => [q.id, q.question]),
+    );
+    const answerTextMap = new Map(
+      (allAnswers ?? []).map((a) => [a.id, a.answer]),
+    );
+    // Map: question_id → the correct answer row
+    const correctAnswerByQuestion = new Map(
+      (allAnswers ?? [])
+        .filter((a) => a.is_correct)
+        .map((a) => [a.question_id, a]),
     );
 
+    // 4. Score + build per-question breakdown
     let correctCount = 0;
     const total = answers.length;
 
-    for (const studentAnswer of answers) {
-      const correctAnswerId = correctAnswerMap.get(studentAnswer.question_id);
-      if (correctAnswerId && studentAnswer.answer_id === correctAnswerId) {
-        correctCount++;
-      }
-    }
+    const breakdown = answers.map(
+      (studentAnswer: { question_id: string; answer_id: string }) => {
+        const correctAnswer = correctAnswerByQuestion.get(
+          studentAnswer.question_id,
+        );
+        const isCorrect = correctAnswer?.id === studentAnswer.answer_id;
+        if (isCorrect) correctCount++;
+        return {
+          questionId: studentAnswer.question_id,
+          question: questionTextMap.get(studentAnswer.question_id) ?? "",
+          selectedAnswerId: studentAnswer.answer_id,
+          selectedAnswer: answerTextMap.get(studentAnswer.answer_id) ?? "",
+          correctAnswerId: correctAnswer?.id ?? null,
+          correctAnswer: correctAnswer?.answer ?? "",
+          isCorrect,
+        };
+      },
+    );
 
     const percentage = total > 0 ? Math.round((correctCount / total) * 100) : 0;
     const passed = percentage >= quiz.passing_score;
 
-    // 4. Store the attempt
-    const { error: attemptError } = await supabase
+    // 5. Store the attempt
+    const { data: attempt, error: attemptError } = await adminSupabase
       .from("quiz_attempts")
       .insert({
         user_id: user.id,
         quiz_id: id,
         score: percentage,
         passed,
-      });
+      })
+      .select("id")
+      .single();
 
     if (attemptError) {
       console.error("Error saving quiz attempt:", attemptError);
       // Don't fail the request — result is still valid
+    }
+
+    // 6. Store per-question answers (requires quiz_attempt_answers table)
+    if (attempt?.id) {
+      const attemptAnswers = breakdown.map((b) => ({
+        attempt_id: attempt.id,
+        question_id: b.questionId,
+        selected_answer_id: b.selectedAnswerId,
+        is_correct: b.isCorrect,
+      }));
+      const { error: answerInsertError } = await adminSupabase
+        .from("quiz_attempt_answers")
+        .insert(attemptAnswers);
+      if (answerInsertError) {
+        // Table may not exist yet — log but don't fail
+        console.warn(
+          "Could not save per-question answers:",
+          answerInsertError.message,
+        );
+      }
     }
 
     // Fire-and-forget: notify admins of the quiz completion
@@ -129,11 +183,11 @@ export async function POST(
     });
 
     return NextResponse.json({
-      score: correctCount,
+      score: percentage,
+      correct: correctCount,
       total,
-      percentage,
       passed,
-      passing_score: quiz.passing_score,
+      breakdown,
     });
   } catch (error) {
     console.error("Quiz submit error:", error);

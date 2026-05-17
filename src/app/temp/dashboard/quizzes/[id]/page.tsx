@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import QuizForm from "./QuizForm";
 
 export default async function QuizPage({
@@ -10,6 +10,7 @@ export default async function QuizPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
+  const admin = await createAdminClient();
 
   // Auth guard
   const {
@@ -17,27 +18,33 @@ export default async function QuizPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/temp/login");
 
-  // Check subscription
+  // Check subscription (using user client)
   const { data: profile } = await supabase
     .from("profiles")
     .select("has_subscription")
     .eq("id", user.id)
     .maybeSingle();
 
-  if (!profile?.has_subscription) redirect("/temp/dashboard");
+  if (!profile?.has_subscription) {
+    console.log("Redirecting: user has no subscription");
+    redirect("/temp/dashboard");
+  }
 
-  // Fetch quiz
-  const { data: quiz, error: quizError } = await supabase
+  // Fetch quiz (using admin client to ensure we see it if published)
+  const { data: quiz, error: quizError } = await admin
     .from("quizzes")
     .select("id, title, description, passing_score, course_id")
     .eq("id", id)
     .eq("is_published", true)
     .single();
 
-  if (quizError || !quiz) redirect("/temp/dashboard");
+  if (quizError || !quiz) {
+    console.log("Redirecting: quiz not found or not published", quizError);
+    redirect("/temp/dashboard");
+  }
 
-  // Fetch questions
-  const { data: questions, error: questionsError } = await supabase
+  // Fetch questions (using admin client)
+  const { data: questions, error: questionsError } = await admin
     .from("quiz_questions")
     .select("id, question, type, points")
     .eq("quiz_id", id)
@@ -61,9 +68,9 @@ export default async function QuizPage({
     );
   }
 
-  // Fetch answer options (without is_correct)
+  // Fetch answer options (without is_correct) using admin client
   const questionIds = questions.map((q) => q.id);
-  const { data: answers } = await supabase
+  const { data: answers } = await admin
     .from("quiz_answers")
     .select("id, question_id, answer")
     .in("question_id", questionIds);
@@ -133,7 +140,6 @@ export default async function QuizPage({
             Passing score: {quiz.passing_score}%
           </p>
         </div>
-
         <QuizForm quiz={quizData} />
       </main>
     </div>

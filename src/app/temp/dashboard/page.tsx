@@ -57,13 +57,27 @@ export default async function TempDashboardPage() {
   const isSubscribed = profile?.has_subscription ?? false;
   const isActive = profile?.is_active ?? true;
 
-  // Fetch published courses — always, so we can show the count even when locked
-  const { data: courses } = await supabase
+  // Use admin client to ensure we see all published content regardless of RLS
+  const admin = await createAdminClient();
+
+  // Fetch published courses
+  const { data: courses, error: coursesError } = await admin
     .from("courses")
     .select("id, title, description, level, content_text")
     .eq("is_published", true)
     .order("level", { ascending: true })
     .order("created_at", { ascending: true });
+
+  if (coursesError) console.error("Courses fetch error:", coursesError);
+
+  // Fetch published quizzes
+  const { data: quizzes, error: quizzesError } = await admin
+    .from("quizzes")
+    .select("id, title, description, course_id")
+    .eq("is_published", true)
+    .order("created_at", { ascending: true });
+
+  if (quizzesError) console.error("Quizzes fetch error:", quizzesError);
 
   const memberSince = user.created_at
     ? new Date(user.created_at).toLocaleDateString("en-US", {
@@ -368,10 +382,133 @@ export default async function TempDashboardPage() {
             </div>
           )}
         </div>
+
+        {/* ── Quizzes section ────────────────────────────────── */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <svg
+                className="w-4 h-4 text-gray-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+                />
+              </svg>
+              <h2 className="font-semibold text-gray-800 dark:text-gray-200">
+                Practice Quizzes
+              </h2>
+            </div>
+            {quizzes && quizzes.length > 0 && (
+              <span className="text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-2.5 py-1 rounded-full">
+                {quizzes.length} available
+              </span>
+            )}
+          </div>
+
+          {isSubscribed ? (
+            /* ── Unlocked: show quiz grid ── */
+            !quizzes || quizzes.length === 0 ? (
+              <div className="p-8 text-center text-gray-500 dark:text-gray-400 text-sm">
+                No quizzes available yet. Check back soon!
+              </div>
+            ) : (
+              <div className="p-6 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {quizzes.map((quiz) => (
+                  <QuizCard key={quiz.id} quiz={quiz} />
+                ))}
+              </div>
+            )
+          ) : (
+            /* ── Locked: upgrade prompt ── */
+            <div className="p-8 flex flex-col items-center text-center gap-4">
+              <div className="w-14 h-14 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                <svg
+                  className="w-6 h-6 text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <p className="font-semibold text-gray-800 dark:text-gray-200">
+                  {quizzes && quizzes.length > 0
+                    ? `${quizzes.length} quiz${quizzes.length > 1 ? "zes" : ""} waiting for you`
+                    : "Quizzes coming soon"}
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Subscribe to unlock all practice quizzes.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );
 }
+
+// Quiz card used in the subscribed quizzes grid
+function QuizCard({
+  quiz,
+}: {
+  quiz: {
+    id: string;
+    title: string;
+    description?: string | null;
+  };
+}) {
+  return (
+    <Link
+      href={`/temp/dashboard/quizzes/${quiz.id}`}
+      className="flex flex-col gap-3 p-4 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-blue-200 dark:hover:border-blue-700 hover:shadow-sm transition-all"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <h3 className="font-semibold text-gray-900 dark:text-white text-sm leading-snug line-clamp-2">
+          {quiz.title}
+        </h3>
+        <span className="flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 uppercase tracking-wider">
+          Quiz
+        </span>
+      </div>
+      {quiz.description && (
+        <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
+          {quiz.description}
+        </p>
+      )}
+      <div className="mt-auto pt-1">
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400">
+          <svg
+            className="w-3.5 h-3.5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+            />
+          </svg>
+          Take Quiz →
+          </span>
+          </div>
+          </Link>
+          );
+          }
 
 // Course card used in the subscribed courses grid
 const LEVEL_STYLES: Record<string, string> = {

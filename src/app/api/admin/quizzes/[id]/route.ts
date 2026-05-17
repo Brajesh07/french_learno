@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/supabase/auth-helpers';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 
 // ----------------------------------------------------------------
 // GET /api/admin/quizzes/:id
@@ -15,7 +15,7 @@ export async function GET(
 
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
 
     const { data: quiz, error: quizError } = await supabase
       .from('quizzes')
@@ -44,7 +44,7 @@ export async function GET(
       timeLimit: quiz.time_limit || 30, // Assuming default or from quiz
       createdAt: quiz.created_at,
       updatedAt: quiz.updated_at,
-      questions: (quiz.quiz_questions as {
+      questions: ((quiz.quiz_questions || []) as {
         id: string;
         question: string;
         type: string;
@@ -57,12 +57,12 @@ export async function GET(
         type: q.type,
         points: q.points,
         explanation: q.explanation,
-        answers: q.quiz_answers.map((a) => ({
+        answers: (q.quiz_answers || []).map((a) => ({
           id: a.id,
           text: a.answer,
           isCorrect: a.is_correct,
         })),
-        correctAnswerId: q.quiz_answers.find((a) => a.is_correct)?.id,
+        correctAnswerId: (q.quiz_answers || []).find((a) => a.is_correct)?.id,
       })),
     };
 
@@ -75,7 +75,7 @@ export async function GET(
 
 // ----------------------------------------------------------------
 // PATCH /api/admin/quizzes/:id
-// Partially updates quiz metadata (not questions/answers).
+// Updates quiz metadata and optionally replaces questions/answers.
 // ----------------------------------------------------------------
 export async function PATCH(
   request: NextRequest,
@@ -86,35 +86,107 @@ export async function PATCH(
 
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     const body = await request.json();
 
+    const {
+      questions,
+    } = body;
+
+    // 1. Update quiz metadata
     const allowedFields = ['title', 'description', 'passing_score', 'is_published', 'course_id'];
     const updateData: Record<string, unknown> = {};
     for (const key of allowedFields) {
       if (key in body) updateData[key] = body[key];
     }
 
-    if (Object.keys(updateData).length === 0) {
-      return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
-    }
+    if (Object.keys(updateData).length > 0) {
+      const { error: quizError } = await supabase
+        .from('quizzes')
+        .update(updateData)
+        .eq('id', id);
 
-    const { data, error } = await supabase
-      .from('quizzes')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
+      if (quizError) {
+        console.error('Error updating quiz metadata:', quizError);
+        return NextResponse.json({ error: 'Failed to update quiz metadata' }, { status: 500 });
       }
-      console.error('Error updating quiz:', error);
-      return NextResponse.json({ error: 'Failed to update quiz' }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, data });
+    // 2. If questions are provided, replace them all
+    if (questions && Array.isArray(questions)) {
+      // Validate questions first
+      for (const q of questions) {
+        if (!q.question?.trim()) {
+          return NextResponse.json({ error: "All questions must have content" }, { status: 400 });
+        }
+        if (!q.answers || q.answers.length < 2) {
+          return NextResponse.json({ error: "Each question needs at least 2 answers" }, { status: 400 });
+        }
+      }
+
+      // Delete existing questions (cascades to answers)
+      const { error: deleteError } = await supabase
+        .from('quiz_questions')
+        .delete()
+        .eq('quiz_id', id);
+
+      if (deleteError) {
+        console.error('Error deleting old questions:', deleteError);
+        return NextResponse.json({ error: 'Failed to clear old questions' }, { status: 500 });
+      }
+
+      // Insert new questions
+      const questionsToInsert = questions.map((q: {
+        question: string;
+        type?: string;
+        points?: number;
+        explanation?: string;
+      }) => ({
+        quiz_id: id,
+        question: q.question.trim(),
+        type: q.type || 'mcq',
+        points: q.points ?? 1,
+        explanation: q.explanation?.trim() || null,
+      }));
+
+      const { data: insertedQuestions, error: questionsError } = await supabase
+        .from('quiz_questions')
+        .insert(questionsToInsert)
+        .select();
+
+      if (questionsError || !insertedQuestions) {
+        console.error('Error inserting new questions:', questionsError);
+        return NextResponse.json({ error: 'Failed to save new questions' }, { status: 500 });
+      }
+
+      // Insert new answers
+      const answersToInsert: {
+        question_id: string;
+        answer: string;
+        is_correct: boolean;
+      }[] = [];
+      for (let i = 0; i < questions.length; i++) {
+        const questionId = insertedQuestions[i].id;
+        for (const a of questions[i].answers) {
+          answersToInsert.push({
+            question_id: questionId,
+            answer: a.answer.trim(),
+            is_correct: a.is_correct ?? false,
+          });
+        }
+      }
+
+      const { error: answersError } = await supabase
+        .from('quiz_answers')
+        .insert(answersToInsert);
+
+      if (answersError) {
+        console.error('Error inserting new answers:', answersError);
+        return NextResponse.json({ error: 'Failed to save new answers' }, { status: 500 });
+      }
+    }
+
+    return NextResponse.json({ success: true, message: 'Quiz updated successfully' });
   } catch (error) {
     console.error('Quiz PATCH error:', error);
     return NextResponse.json({ error: 'Failed to update quiz' }, { status: 500 });
@@ -134,7 +206,7 @@ export async function DELETE(
 
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
 
     const { error } = await supabase
       .from('quizzes')
