@@ -1,54 +1,88 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
 
-// Define protected routes
-const protectedRoutes = ['/dashboard'];
-const authRoutes = ['/login'];
+/**
+ * Supabase-aware middleware.
+ *
+ * Responsibilities:
+ * 1. Refresh the Supabase session cookie on every request (keeps sessions alive).
+ * 2. Redirect unauthenticated users away from protected routes.
+ * 3. Redirect authenticated users away from auth routes (e.g. /login).
+ */
+export async function middleware(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({ request });
 
-export function middleware(request: NextRequest) {
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          // Apply cookies to the request (for downstream server components)
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value),
+          );
+
+          // Re-create response so cookies are forwarded to the browser too
+          supabaseResponse = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options),
+          );
+        },
+      },
+    },
+  );
+
+  // IMPORTANT: Do not add any logic between createServerClient and getUser().
+  // A simple mistake can cause random logouts.
+  let user = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch {
+    // If the auth check fails (e.g. network error, missing env vars),
+    // fall through and let route handlers deal with auth instead of crashing.
+    return supabaseResponse;
+  }
+
   const { pathname } = request.nextUrl;
-  
-  // Check if the current path is a protected route
-  const isProtectedRoute = protectedRoutes.some(route => 
-    pathname.startsWith(route)
-  );
-  
-  // Check if the current path is an auth route
-  const isAuthRoute = authRoutes.some(route => 
-    pathname.startsWith(route)
-  );
 
-  // Get the session token from cookies
-  const sessionToken = request.cookies.get('__session')?.value;
-  
-  // If trying to access a protected route without a session
-  if (isProtectedRoute && !sessionToken) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
+  const isProtectedRoute = pathname.startsWith("/dashboard");
+  const isAuthRoute = pathname.startsWith("/login");
+  const isTempProtectedRoute = pathname.startsWith("/temp/dashboard");
+
+  // Redirect unauthenticated users trying to access protected routes
+  if (isProtectedRoute && !user) {
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
   }
-  
-  // If trying to access auth routes with a valid session, redirect to dashboard
-  if (isAuthRoute && sessionToken) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+
+  // Redirect authenticated users away from the login page
+  if (isAuthRoute && user) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
-  
-  // Allow root path to be handled by the page component
-  // The page component will handle authentication-based routing
-  
-  return NextResponse.next();
+
+  // Redirect unauthenticated users from /temp/dashboard to /temp/login
+  if (isTempProtectedRoute && !user) {
+    return NextResponse.redirect(new URL("/temp/login", request.url));
+  }
+
+  return supabaseResponse;
 }
 
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
+     * Match all request paths EXCEPT:
      * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
+     * - _next/image (image optimization)
+     * - favicon.ico
+     * - public folder assets
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|public).*)',
+    "/((?!_next/static|_next/image|favicon.ico|public|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

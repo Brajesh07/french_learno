@@ -94,23 +94,29 @@ export default function QuizzesPage() {
 
   const togglePublishStatus = async (
     quizId: string,
-    currentStatus: boolean
+    currentStatus: boolean,
   ) => {
     try {
       const response = await fetch(`/api/admin/quizzes/${quizId}`, {
-        method: "PUT",
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
         credentials: "include",
         body: JSON.stringify({
-          isPublished: !currentStatus,
+          is_published: !currentStatus,
         }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to update quiz");
+        let errorMessage = "Failed to update quiz";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = `Error ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
 
       fetchQuizzes();
@@ -343,7 +349,7 @@ export default function QuizzesPage() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
                       className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getLevelColor(
-                        quiz.level
+                        quiz.level,
                       )}`}
                     >
                       {quiz.level}
@@ -376,7 +382,7 @@ export default function QuizzesPage() {
                         togglePublishStatus(quiz.id, quiz.isPublished)
                       }
                       className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full cursor-pointer hover:opacity-80 ${getStatusColor(
-                        quiz.isPublished
+                        quiz.isPublished,
                       )}`}
                     >
                       {quiz.isPublished ? "Published" : "Draft"}

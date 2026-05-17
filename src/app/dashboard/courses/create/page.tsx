@@ -86,14 +86,14 @@ export default function CreateCoursePage() {
             ...quiz,
             createdAt: new Date(quiz.createdAt),
             updatedAt: new Date(quiz.updatedAt),
-          })
+          }),
         ) || [];
 
       setQuizzes(processedQuizzes);
     } catch (err) {
       console.error("Error fetching course:", err);
       setError(
-        err instanceof Error ? err.message : "Failed to fetch course data"
+        err instanceof Error ? err.message : "Failed to fetch course data",
       );
     } finally {
       setFetchingCourse(false);
@@ -122,7 +122,7 @@ export default function CreateCoursePage() {
       const url = isEditMode
         ? `/api/admin/courses/${courseId}`
         : "/api/admin/courses";
-      const method = isEditMode ? "PUT" : "POST";
+      const method = isEditMode ? "PATCH" : "POST";
 
       const response = await fetch(url, {
         method,
@@ -137,30 +137,30 @@ export default function CreateCoursePage() {
         const errorData = await response.json();
         throw new Error(
           errorData.error ||
-            `Failed to ${isEditMode ? "update" : "create"} course`
+            `Failed to ${isEditMode ? "update" : "create"} course`,
         );
       }
 
       const result = await response.json();
       const successMessage = isEditMode
         ? "Course updated successfully!"
-        : "Course created successfully!";
+        : "Course created successfully! You can now add quizzes below.";
       setSuccess(successMessage);
 
-      // Redirect to the course preview page after a short delay
-      setTimeout(() => {
-        const targetCourseId = isEditMode ? courseId : result.courseId;
-        router.push(`/dashboard/courses/${targetCourseId}`);
-      }, 1500);
+      if (!isEditMode) {
+        // After creating, stay on this page in edit mode so the quiz section appears
+        const newCourseId = result.courseId;
+        router.push(`/dashboard/courses/create?courseId=${newCourseId}`);
+      }
     } catch (err) {
       console.error(
         `Error ${isEditMode ? "updating" : "creating"} course:`,
-        err
+        err,
       );
       setError(
         err instanceof Error
           ? err.message
-          : `Failed to ${isEditMode ? "update" : "create"} course`
+          : `Failed to ${isEditMode ? "update" : "create"} course`,
       );
     } finally {
       setLoading(false);
@@ -169,7 +169,7 @@ export default function CreateCoursePage() {
 
   const handleInputChange = (
     field: string,
-    value: string | number | boolean
+    value: string | number | boolean,
   ) => {
     if (field.startsWith("content.")) {
       const contentField = field.split(".")[1];
@@ -317,7 +317,7 @@ export default function CreateCoursePage() {
                     onChange={(e) =>
                       handleInputChange(
                         "estimatedDuration",
-                        parseInt(e.target.value) || 30
+                        parseInt(e.target.value) || 30,
                       )
                     }
                     min="1"
@@ -462,7 +462,7 @@ export default function CreateCoursePage() {
                   </button>
                   <Link
                     href={`/dashboard/quizzes/create?courseId=${courseId}&title=${encodeURIComponent(
-                      formData.title
+                      formData.title,
                     )}`}
                   >
                     <Button type="button" variant="primary">
@@ -537,7 +537,7 @@ export default function CreateCoursePage() {
                                 </span>
                                 <span
                                   className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(
-                                    quiz.isPublished
+                                    quiz.isPublished,
                                   )}`}
                                 >
                                   {quiz.isPublished ? "Published" : "Draft"}
@@ -616,7 +616,7 @@ export default function CreateCoursePage() {
                                                 }`}
                                               >
                                                 {String.fromCharCode(
-                                                  65 + aIndex
+                                                  65 + aIndex,
                                                 )}
                                                 . {answer.text}
                                                 {question.correctAnswerId ===
@@ -626,7 +626,7 @@ export default function CreateCoursePage() {
                                                   </span>
                                                 )}
                                               </div>
-                                            )
+                                            ),
                                           )}
                                         </div>
                                       )}
@@ -681,8 +681,8 @@ export default function CreateCoursePage() {
                   ? "Updating..."
                   : "Creating..."
                 : isEditMode
-                ? "Update Course"
-                : "Create Course"}
+                  ? "Update Course"
+                  : "Create Course"}
             </Button>
           </div>
         </form>

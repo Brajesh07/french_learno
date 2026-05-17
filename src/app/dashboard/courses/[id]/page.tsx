@@ -18,7 +18,7 @@ export default function CoursePreviewPage() {
   const courseId = params.id as string;
 
   const [courseDetails, setCourseDetails] = useState<CourseDetails | null>(
-    null
+    null,
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +59,7 @@ export default function CoursePreviewPage() {
     } catch (err) {
       console.error("Error fetching course details:", err);
       setError(
-        err instanceof Error ? err.message : "Failed to fetch course details"
+        err instanceof Error ? err.message : "Failed to fetch course details",
       );
     } finally {
       setLoading(false);
@@ -106,6 +106,54 @@ export default function CoursePreviewPage() {
         className="whitespace-pre-wrap"
         dangerouslySetInnerHTML={{ __html: formattedText }}
       />
+    );
+  };
+
+  const renderVideo = (videoUrl: string) => {
+    // Check for YouTube URLs
+    const youtubeMatch = videoUrl.match(
+      /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?]+)/,
+    );
+
+    if (youtubeMatch && youtubeMatch[1]) {
+      const videoId = youtubeMatch[1];
+      return (
+        <iframe
+          className="w-full aspect-video rounded shadow-sm"
+          src={`https://www.youtube.com/embed/${videoId}`}
+          title="YouTube video player"
+          frameBorder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+        ></iframe>
+      );
+    }
+
+    // Check for Vimeo URLs
+    const vimeoMatch = videoUrl.match(
+      /(?:https?:\/\/)?(?:www\.)?(?:vimeo\.com\/)(\d+)/,
+    );
+
+    if (vimeoMatch && vimeoMatch[1]) {
+      const videoId = vimeoMatch[1];
+      return (
+        <iframe
+          className="w-full aspect-video rounded shadow-sm"
+          src={`https://player.vimeo.com/video/${videoId}`}
+          title="Vimeo video player"
+          frameBorder="0"
+          allow="autoplay; fullscreen; picture-in-picture"
+          allowFullScreen
+        ></iframe>
+      );
+    }
+
+    // Fallback to standard HTML5 video player
+    return (
+      <video controls className="w-full rounded shadow-sm bg-black max-h-64">
+        <source src={videoUrl} />
+        Your browser does not support the video element.
+      </video>
     );
   };
 
@@ -180,7 +228,7 @@ export default function CoursePreviewPage() {
             </nav>
           </div>
           <div className="flex gap-2">
-            <Link href={`/dashboard/courses/${course.id}/edit`}>
+            <Link href={`/dashboard/courses/create?courseId=${course.id}`}>
               <Button variant="primary">Edit Course</Button>
             </Link>
             <Link href={`/dashboard/quizzes?courseId=${course.id}`}>
@@ -200,14 +248,14 @@ export default function CoursePreviewPage() {
             <div className="flex items-center gap-4 mb-4">
               <span
                 className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getLevelColor(
-                  course.level
+                  course.level,
                 )}`}
               >
                 Level {course.level}
               </span>
               <span
                 className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getStatusColor(
-                  course.isPublished
+                  course.isPublished,
                 )}`}
               >
                 {course.isPublished ? "Published" : "Draft"}
@@ -307,10 +355,7 @@ export default function CoursePreviewPage() {
                   <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Video Resource
                   </h4>
-                  <video controls className="w-full h-32">
-                    <source src={course.content.videoUrl} type="video/mp4" />
-                    Your browser does not support the video element.
-                  </video>
+                  {renderVideo(course.content.videoUrl)}
                 </div>
               )}
             </div>
@@ -389,7 +434,7 @@ export default function CoursePreviewPage() {
                           </span>
                           <span
                             className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(
-                              quiz.isPublished
+                              quiz.isPublished,
                             )}`}
                           >
                             {quiz.isPublished ? "Published" : "Draft"}

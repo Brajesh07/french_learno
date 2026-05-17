@@ -23,7 +23,7 @@ export default function CoursesPage() {
   const [publishedFilter, setPublishedFilter] = useState<string>("");
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const { getIdToken, user } = useAuth();
+  const { user } = useAuth();
 
   const limit = 10;
 
@@ -37,11 +37,6 @@ export default function CoursesPage() {
     try {
       setLoading(true);
       setError(null);
-
-      const idToken = await getIdToken();
-      if (!idToken) {
-        throw new Error("Failed to get authentication token");
-      }
 
       const params = new URLSearchParams({
         page: page.toString(),
@@ -57,7 +52,6 @@ export default function CoursesPage() {
       const response = await fetch(`/api/admin/courses?${params}`, {
         headers: {
           Accept: "application/json",
-          Authorization: `Bearer ${idToken}`,
         },
       });
 
@@ -85,7 +79,6 @@ export default function CoursesPage() {
     sortBy,
     sortOrder,
     user,
-    getIdToken,
   ]);
 
   useEffect(() => {
@@ -118,16 +111,10 @@ export default function CoursesPage() {
     }
 
     try {
-      const idToken = await getIdToken();
-      if (!idToken) {
-        throw new Error("Failed to get authentication token");
-      }
-
       const response = await fetch(`/api/admin/courses/${courseId}`, {
-        method: "PUT",
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${idToken}`,
         },
         body: JSON.stringify({
           isPublished: !currentStatus,
@@ -135,8 +122,15 @@ export default function CoursesPage() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to update course");
+        let errorMessage = "Failed to update course";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          // If response is not JSON (e.g., 405 error page)
+          errorMessage = `Error ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
 
       // Refresh the courses list
