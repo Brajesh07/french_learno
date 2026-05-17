@@ -97,7 +97,7 @@ export async function PATCH(
 
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     const body = await request.json();
 
     // Accept the camelCase / nested format sent by the frontend

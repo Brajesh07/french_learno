@@ -18,7 +18,7 @@ export default function CoursePreviewPage() {
   const courseId = params.id as string;
 
   const [courseDetails, setCourseDetails] = useState<CourseDetails | null>(
-    null
+    null,
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +59,7 @@ export default function CoursePreviewPage() {
     } catch (err) {
       console.error("Error fetching course details:", err);
       setError(
-        err instanceof Error ? err.message : "Failed to fetch course details"
+        err instanceof Error ? err.message : "Failed to fetch course details",
       );
     } finally {
       setLoading(false);
@@ -180,7 +180,7 @@ export default function CoursePreviewPage() {
             </nav>
           </div>
           <div className="flex gap-2">
-            <Link href={`/dashboard/courses/${course.id}/edit`}>
+            <Link href={`/dashboard/courses/create?courseId=${course.id}`}>
               <Button variant="primary">Edit Course</Button>
             </Link>
             <Link href={`/dashboard/quizzes?courseId=${course.id}`}>
@@ -200,14 +200,14 @@ export default function CoursePreviewPage() {
             <div className="flex items-center gap-4 mb-4">
               <span
                 className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getLevelColor(
-                  course.level
+                  course.level,
                 )}`}
               >
                 Level {course.level}
               </span>
               <span
                 className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getStatusColor(
-                  course.isPublished
+                  course.isPublished,
                 )}`}
               >
                 {course.isPublished ? "Published" : "Draft"}
@@ -389,7 +389,7 @@ export default function CoursePreviewPage() {
                           </span>
                           <span
                             className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(
-                              quiz.isPublished
+                              quiz.isPublished,
                             )}`}
                           >
                             {quiz.isPublished ? "Published" : "Draft"}
