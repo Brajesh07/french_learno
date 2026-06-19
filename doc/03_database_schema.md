@@ -318,3 +318,84 @@ using (auth.uid() = id);
 ```
 
 > ✅ Apply this fix before testing any auth flow.
+
+## Cleanup scripts (optional)
+
+-- ============================================
+-- FrenchLearno — Cleanup Script
+-- Wipes all test data except the admin account
+-- contact@learnwithpoorvi.in
+-- ============================================
+-- Run in Supabase SQL Editor
+-- Double check the admin email before running
+-- ============================================
+
+-- Step 1: Store the admin ID so we never touch it
+do $$
+declare
+admin_id uuid;
+begin
+select id into admin_id
+from auth.users
+where email = 'contact@learnwithpoorvi.in';
+
+if admin_id is null then
+raise exception 'Admin account not found. Aborting — do not run this script.';
+end if;
+end $$;
+
+-- Step 2: Wipe per-question attempt answers
+delete from public.quiz_attempt_answers;
+
+-- Step 3: Wipe quiz attempts
+delete from public.quiz_attempts;
+
+-- Step 4: Wipe user progress
+delete from public.user_progress;
+
+-- Step 5: Wipe subscriptions (except admin)
+delete from public.subscriptions
+where user_id != (
+select id from auth.users where email = 'contact@learnwithpoorvi.in'
+);
+
+-- Step 6: Wipe quiz answers
+delete from public.quiz_answers;
+
+-- Step 7: Wipe quiz questions
+delete from public.quiz_questions;
+
+-- Step 8: Wipe quizzes
+delete from public.quizzes;
+
+-- Step 9: Wipe courses
+delete from public.courses;
+
+-- Step 10: Wipe student profiles (keep admin)
+delete from public.profiles
+where id != (
+select id from auth.users where email = 'contact@learnwithpoorvi.in'
+);
+
+-- Step 11: Wipe student auth accounts (keep admin)
+delete from auth.users
+where email != 'contact@learnwithpoorvi.in';
+
+-- ============================================
+-- Verify — run this after to confirm
+-- ============================================
+select
+(select count(_) from auth.users) as total_auth_users,
+(select count(_) from public.profiles) as total_profiles,
+(select count(_) from public.courses) as total_courses,
+(select count(_) from public.quizzes) as total_quizzes,
+(select count(_) from public.quiz_attempts) as total_attempts,
+(select count(_) from public.subscriptions) as total_subscriptions;
+
+-- Expected result after cleanup:
+-- total_auth_users → 1
+-- total_profiles → 1
+-- total_courses → 0
+-- total_quizzes → 0
+-- total_attempts → 0
+-- total_subscriptions → 0 (or 1 if admin has one)

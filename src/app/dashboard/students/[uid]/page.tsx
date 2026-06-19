@@ -11,6 +11,8 @@ interface StudentDetails {
   lastSignInTime: string | null;
   isActive: boolean;
   hasSubscription: boolean;
+  phone: string | null;
+  class: string | null;
 }
 
 interface StudentPageProps {
@@ -133,11 +135,16 @@ const StudentPage: React.FC<StudentPageProps> = ({ params }) => {
       {/* Breadcrumbs & Navigation */}
       <div className="flex items-center justify-between mb-8">
         <nav className="flex text-sm text-gray-500 dark:text-gray-400">
-          <Link href="/dashboard/students" className="hover:text-blue-600 transition-colors">
+          <Link
+            href="/dashboard/students"
+            className="hover:text-blue-600 transition-colors"
+          >
             Students
           </Link>
           <span className="mx-2">/</span>
-          <span className="text-gray-900 dark:text-white font-medium">Details</span>
+          <span className="text-gray-900 dark:text-white font-medium">
+            Details
+          </span>
         </nav>
         <Link href="/dashboard/students">
           <Button variant="outline" size="sm">
@@ -176,16 +183,27 @@ const StudentPage: React.FC<StudentPageProps> = ({ params }) => {
                   value={student.email || "N/A"}
                 />
                 <DetailItem
+                  label="Phone Number"
+                  value={student.phone || "Not provided"}
+                />
+                <DetailItem
+                  label="Class"
+                  value={student.class || "Not assigned"}
+                />
+                <DetailItem
                   label="Sign-up Date"
                   value={
                     student.creationTime
-                      ? new Date(student.creationTime).toLocaleDateString(undefined, {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
+                      ? new Date(student.creationTime).toLocaleDateString(
+                          undefined,
+                          {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          },
+                        )
                       : "N/A"
                   }
                 />
@@ -193,13 +211,16 @@ const StudentPage: React.FC<StudentPageProps> = ({ params }) => {
                   label="Last Login"
                   value={
                     student.lastSignInTime
-                      ? new Date(student.lastSignInTime).toLocaleDateString(undefined, {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
+                      ? new Date(student.lastSignInTime).toLocaleDateString(
+                          undefined,
+                          {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          },
+                        )
                       : "Never"
                   }
                 />
@@ -216,7 +237,9 @@ const StudentPage: React.FC<StudentPageProps> = ({ params }) => {
             </h3>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-700 dark:text-gray-300">Status</span>
+                <span className="text-sm text-gray-700 dark:text-gray-300">
+                  Status
+                </span>
                 <span
                   className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
                     student.isActive
@@ -237,8 +260,8 @@ const StudentPage: React.FC<StudentPageProps> = ({ params }) => {
                 {updating === "status"
                   ? "Updating..."
                   : student.isActive
-                  ? "Deactivate Account"
-                  : "Activate Account"}
+                    ? "Deactivate Account"
+                    : "Activate Account"}
               </Button>
             </div>
 
@@ -248,7 +271,9 @@ const StudentPage: React.FC<StudentPageProps> = ({ params }) => {
               </h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Plan</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                    Plan
+                  </span>
                   <span
                     className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       student.hasSubscription
@@ -271,8 +296,8 @@ const StudentPage: React.FC<StudentPageProps> = ({ params }) => {
                   {updating === "subscription"
                     ? "Updating..."
                     : student.hasSubscription
-                    ? "Remove Premium"
-                    : "Grant Premium"}
+                      ? "Remove Premium"
+                      : "Grant Premium"}
                 </Button>
               </div>
             </div>

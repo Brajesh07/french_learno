@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { LogoutButton } from "./LogoutButton";
+import { ProfileSection } from "./ProfileSection";
 
 export default async function TempDashboardPage() {
   const supabase = await createClient();
@@ -129,60 +130,33 @@ export default async function TempDashboardPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* ── Profile card ─────────────────────────────────── */}
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
-              <svg
-                className="w-4 h-4 text-gray-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                />
-              </svg>
-              <h2 className="font-semibold text-gray-800 dark:text-gray-200">
-                Profile
-              </h2>
-            </div>
-
-            {!profile ? (
+          {profile ? (
+            <ProfileSection profile={profile} memberSince={memberSince} />
+          ) : (
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
+                <svg
+                  className="w-4 h-4 text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  />
+                </svg>
+                <h2 className="font-semibold text-gray-800 dark:text-gray-200">
+                  Profile
+                </h2>
+              </div>
               <div className="p-6 text-gray-500 dark:text-gray-400 text-sm">
                 No profile found for this user.
               </div>
-            ) : (
-              <div className="p-6 space-y-4">
-                <Row label="Full Name" value={profile.name} />
-                <Row label="Username" value={`@${profile.username}`} />
-                <Row label="Email" value={profile.email} />
-                {profile.phone && <Row label="Phone" value={profile.phone} />}
-                {profile.class && <Row label="Class" value={profile.class} />}
-                {memberSince && (
-                  <Row label="Member since" value={memberSince} />
-                )}
-                <div className="flex items-center justify-between pt-1">
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    Account Status
-                  </span>
-                  <span
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                      isActive
-                        ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400"
-                        : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400"
-                    }`}
-                  >
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-green-500" : "bg-red-500"}`}
-                    />
-                    {isActive ? "Active" : "Inactive"}
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* ── Subscription card ────────────────────────────── */}
           <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
@@ -504,11 +478,11 @@ function QuizCard({
             />
           </svg>
           Take Quiz →
-          </span>
-          </div>
-          </Link>
-          );
-          }
+        </span>
+      </div>
+    </Link>
+  );
+}
 
 // Course card used in the subscribed courses grid
 const LEVEL_STYLES: Record<string, string> = {
@@ -575,17 +549,5 @@ function CourseCard({
         </span>
       </div>
     </Link>
-  );
-}
-
-// Small helper to render a label/value row
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-sm text-gray-500 dark:text-gray-400">{label}</span>
-      <span className="text-sm font-medium text-gray-900 dark:text-white text-right max-w-[60%] truncate">
-        {value}
-      </span>
-    </div>
   );
 }
