@@ -46,6 +46,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       lastSignInTime: authUser.last_sign_in_at ?? null,
       isActive: profile?.is_active ?? true,
       hasSubscription: profile?.has_subscription ?? false,
+      phone: profile?.phone ?? null,
+      class: profile?.class ?? null,
       // include full profile for future use
       profile: profile ?? null,
     },
@@ -112,6 +114,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       lastSignInTime: authUser.last_sign_in_at ?? null,
       isActive: profile?.is_active ?? true,
       hasSubscription: profile?.has_subscription ?? false,
+      phone: profile?.phone ?? null,
+      class: profile?.class ?? null,
       profile: profile ?? null,
     },
   });

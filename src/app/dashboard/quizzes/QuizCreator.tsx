@@ -24,6 +24,7 @@ export default function QuizCreator({
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(!!quizId);
+  const [courses, setCourses] = useState<{ id: string; title: string }[]>([]);
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
     message: string;
@@ -37,6 +38,26 @@ export default function QuizCreator({
     passingScore: 70,
     questions: [],
   });
+
+  // Fetch courses for the dropdown
+  useEffect(() => {
+    if (!initialCourseId) {
+      const fetchCourses = async () => {
+        try {
+          const response = await fetch("/api/admin/courses?limit=100", {
+            credentials: "include",
+          });
+          if (response.ok) {
+            const result = await response.json();
+            setCourses(result.data || []);
+          }
+        } catch (error) {
+          console.error("Error fetching courses:", error);
+        }
+      };
+      fetchCourses();
+    }
+  }, [initialCourseId]);
 
   // Fetch quiz data if in edit mode
   useEffect(() => {
@@ -60,24 +81,28 @@ export default function QuizCreator({
             courseId: quiz.courseId || "",
             timeLimit: quiz.timeLimit || 30,
             passingScore: quiz.passingScore || 70,
-            questions: (quiz.questions || []).map((q: {
-              id: string;
-              question: string;
-              points: number;
-              explanation?: string;
-              correctAnswerId?: string;
-              answers: { id: string; text: string }[];
-            }) => ({
-              id: q.id,
-              question: q.question,
-              points: q.points,
-              explanation: q.explanation || "",
-              correctAnswerId: q.correctAnswerId,
-              answers: (q.answers || []).map((a: { id: string; text: string }) => ({
-                id: a.id,
-                text: a.text,
-              })),
-            })),
+            questions: (quiz.questions || []).map(
+              (q: {
+                id: string;
+                question: string;
+                points: number;
+                explanation?: string;
+                correctAnswerId?: string;
+                answers: { id: string; text: string }[];
+              }) => ({
+                id: q.id,
+                question: q.question,
+                points: q.points,
+                explanation: q.explanation || "",
+                correctAnswerId: q.correctAnswerId,
+                answers: (q.answers || []).map(
+                  (a: { id: string; text: string }) => ({
+                    id: a.id,
+                    text: a.text,
+                  }),
+                ),
+              }),
+            ),
           });
         } catch (error) {
           console.error("Error fetching quiz:", error);
@@ -151,7 +176,7 @@ export default function QuizCreator({
     const finalCourseId = initialCourseId || formData.courseId.trim();
 
     if (!finalCourseId) {
-      setFeedback({ type: "error", message: "Course ID is required" });
+      setFeedback({ type: "error", message: "Please select a course" });
       return;
     }
 
@@ -215,7 +240,9 @@ export default function QuizCreator({
         })),
       };
 
-      const url = quizId ? `/api/admin/quizzes/${quizId}` : "/api/admin/quizzes";
+      const url = quizId
+        ? `/api/admin/quizzes/${quizId}`
+        : "/api/admin/quizzes";
       const method = quizId ? "PATCH" : "POST";
 
       const response = await fetch(url, {
@@ -230,12 +257,14 @@ export default function QuizCreator({
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || `Failed to ${quizId ? "update" : "create"} quiz`);
+        throw new Error(
+          result.error || `Failed to ${quizId ? "update" : "create"} quiz`,
+        );
       }
 
       setFeedback({
         type: "success",
-        message: `Quiz ${quizId ? "updated" : (publishStatus ? "published" : "created")} successfully!`,
+        message: `Quiz ${quizId ? "updated" : publishStatus ? "published" : "created"} successfully!`,
       });
 
       if (!quizId) {
@@ -254,7 +283,9 @@ export default function QuizCreator({
       setFeedback({
         type: "error",
         message:
-          error instanceof Error ? error.message : `Failed to ${quizId ? "update" : "create"} quiz`,
+          error instanceof Error
+            ? error.message
+            : `Failed to ${quizId ? "update" : "create"} quiz`,
       });
     } finally {
       setIsLoading(false);
@@ -336,9 +367,9 @@ export default function QuizCreator({
                 ) : (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Course ID *
+                      Course *
                     </label>
-                    <Input
+                    <select
                       value={formData.courseId}
                       onChange={(e) =>
                         setFormData((prev) => ({
@@ -346,8 +377,15 @@ export default function QuizCreator({
                           courseId: e.target.value,
                         }))
                       }
-                      placeholder="Enter course ID"
-                    />
+                      className="flex h-10 w-full rounded-md border border-gray-300 bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                    >
+                      <option value="">Select a course</option>
+                      {courses.map((course) => (
+                        <option key={course.id} value={course.id}>
+                          {course.title}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 )}
 
