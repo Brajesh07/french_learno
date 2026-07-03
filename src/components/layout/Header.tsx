@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useTheme } from "@/components/ui/ThemeProvider";
 import {
@@ -62,8 +63,10 @@ function NotificationBell() {
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Poll unread count every 30 s
+  // Fetch count once on mount, then keep in sync via Realtime
   useEffect(() => {
+    const supabase = createClient();
+
     const fetchCount = async () => {
       try {
         const res = await fetch("/api/admin/notifications?count=true");
@@ -75,9 +78,23 @@ function NotificationBell() {
         // silently ignore network errors
       }
     };
+
     fetchCount();
-    const timer = setInterval(fetchCount, 30_000);
-    return () => clearInterval(timer);
+
+    const channel = supabase
+      .channel("notifications-badge")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "notifications" },
+        () => {
+          fetchCount();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
   }, []);
 
   // Close when clicking outside

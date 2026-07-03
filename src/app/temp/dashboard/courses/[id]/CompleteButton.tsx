@@ -17,21 +17,23 @@ export default function CompleteButton({
 
   if (completed) {
     return (
-      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 font-medium text-sm">
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2.5}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M5 13l4 4L19 7"
-          />
-        </svg>
-        Course Completed
+      <div className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#10B981]/10 text-[#059669] border border-[#10B981]/20 font-bold text-[13px] shadow-sm animate-in fade-in zoom-in duration-300">
+        <div className="w-5 h-5 rounded-full bg-[#10B981] flex items-center justify-center shadow-sm">
+          <svg
+            className="w-3.5 h-3.5 text-white"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={3}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M5 13l4 4L19 7"
+            />
+          </svg>
+        </div>
+        Completed
       </div>
     );
   }
@@ -58,56 +60,33 @@ export default function CompleteButton({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="flex flex-col items-end gap-2">
       <button
         onClick={handleComplete}
         disabled={loading}
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-medium text-sm transition-colors"
+        className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#7C3AED] hover:bg-[#6D28D9] active:scale-95 disabled:opacity-60 text-white font-bold text-[13px] transition-all shadow-md shadow-purple-500/20"
       >
         {loading ? (
-          <>
-            <svg
-              className="w-4 h-4 animate-spin"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 000 16v-4l-3 3 3 3v-4a8 8 0 01-8-8z"
-              />
-            </svg>
-            Saving…
-          </>
+          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
         ) : (
-          <>
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            Mark as Complete
-          </>
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2.5}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
         )}
+        {loading ? "Saving..." : "Mark as Complete"}
       </button>
       {error && (
-        <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
+        <p className="text-[11px] text-[#FF4B4B] font-medium">{error}</p>
       )}
     </div>
   );

@@ -53,10 +53,7 @@ export default function QuizForm({ quiz }: { quiz: Quiz }) {
     setError(null);
 
     const answers = Object.entries(selected).map(
-      ([question_id, answer_id]) => ({
-        question_id,
-        answer_id,
-      }),
+      ([question_id, answer_id]) => ({ question_id, answer_id }),
     );
 
     try {
@@ -87,37 +84,31 @@ export default function QuizForm({ quiz }: { quiz: Quiz }) {
     }
   }
 
-  // Result screen
+  // ── Result screen ──────────────────────────────────────────────────────────
   if (result) {
     return (
-      <div className="space-y-6">
+      <div className="flex flex-col gap-4">
         {/* Score card */}
         <div
-          className={`rounded-2xl border p-8 text-center ${
-            result.passed
-              ? "bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800"
-              : "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800"
+          className={`rounded-[24px] p-8 text-center shadow-[0_4px_20px_rgba(0,0,0,0.06)] ${
+            result.passed ? "bg-[#DCFCE7]" : "bg-[#FEE2E2]"
           }`}
         >
           <div
-            className={`text-5xl font-bold mb-2 ${
-              result.passed
-                ? "text-green-600 dark:text-green-400"
-                : "text-red-600 dark:text-red-400"
+            className={`text-[52px] font-black leading-none mb-3 ${
+              result.passed ? "text-green-600" : "text-red-500"
             }`}
           >
             {result.score}%
           </div>
           <p
-            className={`text-lg font-semibold ${
-              result.passed
-                ? "text-green-700 dark:text-green-300"
-                : "text-red-700 dark:text-red-300"
+            className={`text-[18px] font-bold mb-2 ${
+              result.passed ? "text-green-700" : "text-red-600"
             }`}
           >
-            {result.passed ? "Passed!" : "Not quite — keep practising!"}
+            {result.passed ? "Passed! 🎉" : "Not quite — keep practising!"}
           </p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+          <p className="text-[13px] text-[#555555]">
             {result.correct} of {result.total} correct · Passing score:{" "}
             {quiz.passing_score}%
           </p>
@@ -125,48 +116,46 @@ export default function QuizForm({ quiz }: { quiz: Quiz }) {
 
         {/* Per-question breakdown */}
         {result.breakdown.length > 0 && (
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+          <div className="flex flex-col gap-3">
+            <h3 className="text-[13px] font-semibold text-[#555555] px-1">
               Question Review
             </h3>
             {result.breakdown.map((item, idx) => (
               <div
                 key={item.questionId}
-                className={`rounded-xl border p-4 ${
-                  item.isCorrect
-                    ? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/10"
-                    : "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/10"
+                className={`rounded-[20px] p-4 shadow-[0_4px_20px_rgba(0,0,0,0.06)] ${
+                  item.isCorrect ? "bg-[#DCFCE7]" : "bg-[#FEE2E2]"
                 }`}
               >
                 <div className="flex items-start gap-3">
                   <span
-                    className={`mt-0.5 shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold ${
-                      item.isCorrect ? "bg-green-500" : "bg-red-500"
+                    className={`mt-0.5 shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold ${
+                      item.isCorrect ? "bg-green-500" : "bg-red-400"
                     }`}
                   >
                     {item.isCorrect ? "✓" : "✗"}
                   </span>
-                  <div className="flex-1 space-y-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">
-                      <span className="text-gray-400 dark:text-gray-500 font-normal mr-1">
+                  <div className="flex-1 min-w-0 flex flex-col gap-1">
+                    <p className="text-[14px] font-semibold text-[#111111]">
+                      <span className="text-[#999999] font-normal mr-1">
                         Q{idx + 1}.
                       </span>
                       {item.question}
                     </p>
                     <p
-                      className={`text-xs ${
-                        item.isCorrect
-                          ? "text-green-700 dark:text-green-400"
-                          : "text-red-700 dark:text-red-400"
+                      className={`text-[12px] ${
+                        item.isCorrect ? "text-green-700" : "text-red-600"
                       }`}
                     >
                       Your answer:{" "}
-                      <span className="font-medium">{item.selectedAnswer}</span>
+                      <span className="font-semibold">
+                        {item.selectedAnswer}
+                      </span>
                     </p>
                     {!item.isCorrect && item.correctAnswer && (
-                      <p className="text-xs text-green-700 dark:text-green-400">
-                        Correct answer:{" "}
-                        <span className="font-medium">
+                      <p className="text-[12px] text-green-700">
+                        Correct:{" "}
+                        <span className="font-semibold">
                           {item.correctAnswer}
                         </span>
                       </p>
@@ -178,20 +167,21 @@ export default function QuizForm({ quiz }: { quiz: Quiz }) {
           </div>
         )}
 
+        {/* Actions */}
         <div className="flex gap-3 flex-wrap">
           <button
             onClick={() => {
               setSelected({});
               setResult(null);
             }}
-            className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            className="px-5 py-3 rounded-[20px] bg-white border border-[#E5E5E5] text-[14px] font-semibold text-[#555555] shadow-[0_4px_20px_rgba(0,0,0,0.06)] transition-colors hover:bg-[#F5F5F7]"
           >
             Retake Quiz
           </button>
           {quiz.course_id && (
             <Link
               href={`/temp/dashboard/courses/${quiz.course_id}`}
-              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
+              className="px-5 py-3 rounded-[20px] bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-[14px] font-semibold transition-colors no-underline"
             >
               Back to Course
             </Link>
@@ -201,31 +191,31 @@ export default function QuizForm({ quiz }: { quiz: Quiz }) {
     );
   }
 
-  // Quiz form
+  // ── Quiz form ──────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-4">
       {quiz.questions.map((question, idx) => (
         <div
           key={question.id}
-          className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6"
+          className="bg-white rounded-[20px] p-4 shadow-[0_4px_20px_rgba(0,0,0,0.06)]"
         >
-          <p className="font-medium text-gray-900 dark:text-white text-sm mb-4">
-            <span className="text-gray-400 dark:text-gray-500 font-normal mr-1">
+          <p className="text-[15px] font-bold text-[#111111] mb-4 leading-snug">
+            <span className="text-[#999999] font-normal mr-1.5">
               Q{idx + 1}.
             </span>
             {question.question}
           </p>
 
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             {question.answers.map((answer) => {
               const isSelected = selected[question.id] === answer.id;
               return (
                 <label
                   key={answer.id}
-                  className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                  className={`flex items-center gap-3 px-4 py-3 rounded-[14px] border cursor-pointer transition-all ${
                     isSelected
-                      ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-500"
-                      : "border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                      ? "border-[#A78BFA] bg-[#A78BFA]/10"
+                      : "border-[#E5E5E5] bg-[#F5F5F7] hover:border-[#A78BFA]/50"
                   }`}
                 >
                   <input
@@ -239,9 +229,9 @@ export default function QuizForm({ quiz }: { quiz: Quiz }) {
                         [question.id]: answer.id,
                       }))
                     }
-                    className="accent-blue-600"
+                    className="accent-[#7C3AED]"
                   />
-                  <span className="text-sm text-gray-800 dark:text-gray-200">
+                  <span className="text-[14px] text-[#111111]">
                     {answer.answer}
                   </span>
                 </label>
@@ -252,13 +242,19 @@ export default function QuizForm({ quiz }: { quiz: Quiz }) {
       ))}
 
       {error && (
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        <div className="px-4 py-3 rounded-[14px] bg-red-100 text-red-600 text-[13px] font-medium">
+          {error}
+        </div>
       )}
 
       <button
         onClick={handleSubmit}
         disabled={!allAnswered || submitting}
-        className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm transition-colors"
+        className={`w-full py-4 rounded-[20px] text-white font-bold text-[16px] border-none transition-colors duration-200 ${
+          !allAnswered || submitting
+            ? "bg-[#C4B5FD] cursor-not-allowed"
+            : "bg-[#7C3AED] cursor-pointer hover:bg-[#6D28D9]"
+        }`}
       >
         {submitting
           ? "Submitting…"
@@ -268,4 +264,40 @@ export default function QuizForm({ quiz }: { quiz: Quiz }) {
       </button>
     </div>
   );
+}
+
+interface Answer {
+  id: string;
+  answer: string;
+}
+
+interface Question {
+  id: string;
+  question: string;
+  answers: Answer[];
+}
+
+interface Quiz {
+  id: string;
+  title: string;
+  description: string | null;
+  passing_score: number;
+  course_id: string | null;
+  questions: Question[];
+}
+
+interface Result {
+  score: number;
+  passed: boolean;
+  correct: number;
+  total: number;
+  breakdown: {
+    questionId: string;
+    question: string;
+    selectedAnswerId: string;
+    selectedAnswer: string;
+    correctAnswerId: string | null;
+    correctAnswer: string;
+    isCorrect: boolean;
+  }[];
 }

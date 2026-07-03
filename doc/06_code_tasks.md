@@ -6,14 +6,11 @@
 
 These tasks are blocking further progress. Complete them in order:
 
-1. **Configure Supabase env vars** — Copy keys into `.env.local` so the app can run with real data
-2. **Fix API mismatch in student endpoints** — Use `GET /api/admin/students` and `GET/PATCH /api/admin/students/[id]` consistently (remove any `list-students` or `student/[uid]` usage)
-3. **Build `/test/student-login` web page** — Temporary web page to validate student auth + RLS before building React Native screens
-4. **Fix broken student system routes** — Reconcile and test all student API routes
-5. **Connect dashboard stats to real DB** — Replace hardcoded/fake stats with live Supabase queries
-6. **Build CMS UI in admin dashboard** — API exists (`/api/admin/cms`), frontend editor does not
-7. **Build mobile app frontend (React Native)** — API routes exist, no screens built
-8. **Build public website** — Separate Vercel project consuming `/api/public/cms`
+1. **Build CMS UI in admin dashboard** — API exists (`/api/admin/cms`), frontend editor does not
+2. **Build `/api/mobile/progress` endpoint** — Not built; will return 404
+3. **Build mobile app frontend (React Native)** — API routes exist, no screens built
+4. **Build public website** — Separate Vercel project consuming `/api/public/cms`
+5. **Build Upload Test page** — Sidebar link exists but no page at `/dashboard/upload-test`
 
 ---
 
@@ -43,7 +40,7 @@ npm install @supabase/supabase-js @supabase/ssr
 ```
 
 - [x] Install Supabase client
-- [ ] Setup environment variables ⚠️ **Blocking — env vars not configured**
+- [x] Setup environment variables ✅ **Configured in `.env.local`**
 
 ---
 
@@ -51,7 +48,8 @@ npm install @supabase/supabase-js @supabase/ssr
 
 - [x] Create `lib/supabase/client.ts`
 - [x] Create `lib/supabase/server.ts`
-- [ ] Test connection (blocked by missing env vars)
+- [x] Create `lib/supabase/auth-helpers.ts`
+- [x] Test connection ✅ **Env vars configured**
 
 ---
 
@@ -72,7 +70,7 @@ npm install @supabase/supabase-js @supabase/ssr
   - email login
   - username login
 
-- [x] Fetch email from username (if needed)
+- [x] Fetch email from username via `/api/auth/lookup-email`
 
 ---
 
@@ -80,7 +78,7 @@ npm install @supabase/supabase-js @supabase/ssr
 
 - [x] Create AuthProvider
 - [x] Manage session
-- [x] Protect routes
+- [x] Protect routes via middleware
 
 ---
 
@@ -88,23 +86,26 @@ npm install @supabase/supabase-js @supabase/ssr
 
 ### ✅ Layout
 
-- [x] Sidebar (Dashboard, Students, Courses, Quizzes, CMS)
+- [x] Sidebar (Dashboard, Students, Courses, Quizzes, Upload Test, Notifications, Analytics)
 - [x] Header (user info, logout)
+- [x] Dark/light theme support
 
 ---
 
-### 🚧 Students Module
+### ✅ Students Module
 
-- [x] Fetch students API (`GET /api/admin/students`)
-- [x] Display list
-- [ ] Fix endpoint naming mismatch ⚠️ **See Immediate Priorities #2**
-- [x] Edit student data (`PATCH /api/admin/students/[id]`)
+- [x] Fetch students API (`GET /api/admin/list-students`)
+- [x] Display list with search and pagination
+- [x] Student detail page (`/dashboard/students/[uid]`)
+- [x] Edit student data (`PATCH /api/admin/student/[uid]`)
 
 ---
 
-### 🚧 Dashboard Stats
+### ✅ Dashboard Stats
 
-- [ ] Connect stats widgets to real DB queries ⚠️ **Currently hardcoded/fake**
+- [x] Connect stats widgets to real DB queries
+- [x] Recent activity feed from API data
+- [x] Quick action links
 
 ---
 
@@ -113,8 +114,8 @@ npm install @supabase/supabase-js @supabase/ssr
 ### ✅ Course CRUD
 
 - [x] Create course form
-- [x] Fetch courses list
-- [x] Edit course
+- [x] Fetch courses list (paginated, filterable)
+- [x] Edit course (rich-text content editor)
 - [x] Delete course
 
 ---
@@ -160,7 +161,47 @@ npm install @supabase/supabase-js @supabase/ssr
 
 ---
 
-## 7. 📱 Phase 6 — Mobile App (Student)
+## 7. 📊 Phase 6 — Analytics (Admin)
+
+### ✅ Analytics Page
+
+- [x] KPI cards (Total Students, Active This Week, Avg Quiz Score, Overall Pass Rate)
+- [x] Activity line chart (weekly/monthly toggle)
+- [x] Subscription donut chart (free vs paid)
+- [x] Quiz performance bar chart by level
+- [x] Level distribution chart
+
+---
+
+### ✅ Analytics APIs
+
+- [x] `GET /api/admin/analytics/kpis`
+- [x] `GET /api/admin/analytics/activity`
+- [x] `GET /api/admin/analytics/subscriptions`
+- [x] `GET /api/admin/analytics/quiz-performance`
+- [x] `GET /api/admin/analytics/level-distribution`
+
+---
+
+## 8. 🔔 Phase 7 — Notifications (Admin)
+
+### ✅ Notifications Page
+
+- [x] Notification list with type badges
+- [x] Mark all as read
+- [x] Unread count badge
+- [x] Refresh button
+
+---
+
+### ✅ Notifications API
+
+- [x] `GET /api/admin/notifications`
+- [x] `PATCH /api/admin/notifications` (mark all read)
+
+---
+
+## 9. 📱 Phase 8 — Mobile App (Student)
 
 > ⚠️ **Status: ~0–20% complete.** API routes exist on the backend but NO React Native frontend has been built.
 
@@ -202,17 +243,17 @@ npm install @supabase/supabase-js @supabase/ssr
 
 ---
 
-## 8. 📊 Phase 7 — Progress & Tracking
+## 10. 📈 Phase 9 — Progress & Tracking
 
-- [ ] Save quiz attempts (API: `/api/mobile/quizzes/[id]/submit` saves attempt)
-- [ ] Calculate score
+- [x] Save quiz attempts (API: `/api/mobile/quizzes/[id]/submit` saves attempt)
+- [x] Calculate score
+- [ ] Build `/api/mobile/progress` endpoint ⚠️ **Not built**
 - [ ] Update progress table
 - [ ] Unlock next level
-- [ ] Build `/api/mobile/progress` endpoint ⚠️ **Not built**
 
 ---
 
-## 9. 🌐 Phase 8 — CMS (Website)
+## 11. 🌐 Phase 10 — CMS (Website)
 
 ### 🚧 Admin CMS (API Built, UI Missing)
 
@@ -221,6 +262,7 @@ npm install @supabase/supabase-js @supabase/ssr
   - hero
   - features
   - testimonials
+  - cta
 
 ---
 
@@ -232,7 +274,7 @@ npm install @supabase/supabase-js @supabase/ssr
 
 ---
 
-## 10. 💳 Phase 9 — Subscription (Basic)
+## 12. 💳 Phase 11 — Subscription (Basic)
 
 - [ ] Add subscription table logic
 - [ ] Mark user as paid/free
@@ -240,7 +282,7 @@ npm install @supabase/supabase-js @supabase/ssr
 
 ---
 
-## 11. 🔐 Phase 10 — Security
+## 13. 🔐 Phase 12 — Security
 
 - [x] Enable RLS
 - [x] Protect admin APIs
@@ -249,7 +291,7 @@ npm install @supabase/supabase-js @supabase/ssr
 
 ---
 
-## 12. 🚀 Phase 11 — Deployment
+## 14. 🚀 Phase 13 — Deployment
 
 ### Staging
 
@@ -267,19 +309,17 @@ npm install @supabase/supabase-js @supabase/ssr
 
 ---
 
-## 13. 🧠 Development Strategy
+## 15. 🧠 Development Strategy
 
 ### ✅ Build Order (IMPORTANT)
 
 ```txt
-1. Configure env vars (BLOCKING)
-2. Fix student API mismatch
-3. Build /test/student-login for auth validation
-4. Connect dashboard stats to DB
-5. Build CMS UI
-6. Build React Native mobile app
-7. Build public website
-8. Deployment
+1. Build CMS UI in admin dashboard
+2. Build /api/mobile/progress endpoint
+3. Build React Native mobile app
+4. Build public website
+5. Build Upload Test page
+6. Deployment
 ```
 
 ---
@@ -292,7 +332,7 @@ npm install @supabase/supabase-js @supabase/ssr
 
 ---
 
-## 14. ✅ Definition of Done
+## 16. ✅ Definition of Done
 
 Project is complete when:
 

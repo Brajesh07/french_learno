@@ -33,31 +33,39 @@ All APIs are built using **Next.js API routes** (in the Admin Dashboard project)
 
 ### 3.1 Students
 
-> **Note:** The canonical student endpoint is `/api/admin/students`. Do **not** use `/api/admin/list-students` or `/api/admin/student/[uid]` — those are deprecated/incorrect naming.
-
-| Method | Endpoint                   | Description        | Status   |
-| ------ | -------------------------- | ------------------ | -------- |
-| GET    | `/api/admin/students`      | List all students  | ✅ Built |
-| GET    | `/api/admin/students/[id]` | Get student detail | ✅ Built |
-| PATCH  | `/api/admin/students/[id]` | Partial update     | ✅ Built |
+| Method | Endpoint                      | Description        | Status   |
+| ------ | ----------------------------- | ------------------ | -------- |
+| GET    | `/api/admin/list-students`    | List all students  | ✅ Built |
+| GET    | `/api/admin/student/[uid]`    | Get student detail | ✅ Built |
+| PATCH  | `/api/admin/student/[uid]`    | Partial update     | ✅ Built |
 
 #### GET all students
 
 ```http
-GET /api/admin/students
+GET /api/admin/list-students?page=1&limit=20&search=john
 ```
 
 Response:
 
 ```json
-[
-  {
-    "id": "uuid",
-    "name": "Gaurav",
-    "email": "test@gmail.com",
-    "level": "A1"
-  }
-]
+{
+  "students": [
+    {
+      "id": "uuid",
+      "name": "Gaurav",
+      "email": "test@gmail.com",
+      "username": "gaurav123",
+      "phone": "+1234567890",
+      "class": "10th",
+      "created_at": "2025-01-01T00:00:00Z",
+      "last_login_at": "2025-01-15T10:30:00Z"
+    }
+  ],
+  "total": 50,
+  "page": 1,
+  "limit": 20,
+  "totalPages": 3
+}
 ```
 
 ---
@@ -65,7 +73,7 @@ Response:
 #### GET student detail
 
 ```http
-GET /api/admin/students/[id]
+GET /api/admin/student/[uid]
 ```
 
 ---
@@ -73,13 +81,13 @@ GET /api/admin/students/[id]
 #### PATCH student (partial update)
 
 ```http
-PATCH /api/admin/students/[id]
+PATCH /api/admin/student/[uid]
 ```
 
 ```json
 {
   "name": "Updated Name",
-  "level": "B1"
+  "class": "12th"
 }
 ```
 
@@ -91,6 +99,7 @@ PATCH /api/admin/students/[id]
 | ------ | ------------------------- | ---------------- | -------- |
 | POST   | `/api/admin/courses`      | Create course    | ✅ Built |
 | GET    | `/api/admin/courses`      | List all courses | ✅ Built |
+| GET    | `/api/admin/courses/[id]` | Get course       | ✅ Built |
 | PATCH  | `/api/admin/courses/[id]` | Partial update   | ✅ Built |
 | DELETE | `/api/admin/courses/[id]` | Delete course    | ✅ Built |
 
@@ -102,7 +111,7 @@ POST /api/admin/courses
 
 ```json
 {
-  "title": "React Basics",
+  "title": "French Basics",
   "level": "A1",
   "description": "Intro course"
 }
@@ -113,7 +122,7 @@ POST /api/admin/courses
 #### GET all courses
 
 ```http
-GET /api/admin/courses
+GET /api/admin/courses?page=1&limit=20&level=A1&isPublished=true&search=french
 ```
 
 ---
@@ -140,6 +149,7 @@ DELETE /api/admin/courses/[id]
 | ------ | ------------------------- | ---------------- | -------- |
 | POST   | `/api/admin/quizzes`      | Create quiz      | ✅ Built |
 | GET    | `/api/admin/quizzes`      | List all quizzes | ✅ Built |
+| GET    | `/api/admin/quizzes/[id]` | Get quiz         | ✅ Built |
 | PATCH  | `/api/admin/quizzes/[id]` | Partial update   | ✅ Built |
 | DELETE | `/api/admin/quizzes/[id]` | Delete quiz      | ✅ Built |
 
@@ -151,15 +161,17 @@ POST /api/admin/quizzes
 
 ```json
 {
-  "title": "React Quiz",
+  "title": "French Quiz 1",
   "course_id": "course-id",
   "passing_score": 70,
   "questions": [
     {
-      "question": "What is React?",
+      "question": "What is 'hello' in French?",
+      "points": 1,
+      "explanation": "Bonjour is the French word for hello",
       "answers": [
-        { "text": "Framework", "is_correct": false },
-        { "text": "Library", "is_correct": true }
+        { "text": "Au revoir", "is_correct": false },
+        { "text": "Bonjour", "is_correct": true }
       ]
     }
   ]
@@ -171,7 +183,7 @@ POST /api/admin/quizzes
 #### GET quizzes
 
 ```http
-GET /api/admin/quizzes
+GET /api/admin/quizzes?page=1&limit=20&courseId=uuid&search=french
 ```
 
 ---
@@ -222,6 +234,125 @@ PATCH /api/admin/cms/[section_key]
 
 ---
 
+### 3.5 Notifications
+
+| Method | Endpoint                   | Description                | Status   |
+| ------ | -------------------------- | -------------------------- | -------- |
+| GET    | `/api/admin/notifications` | List notifications         | ✅ Built |
+| PATCH  | `/api/admin/notifications` | Mark notifications as read | ✅ Built |
+
+#### GET notifications
+
+```http
+GET /api/admin/notifications?limit=50
+```
+
+Response:
+
+```json
+{
+  "notifications": [
+    {
+      "id": "uuid",
+      "type": "login",
+      "title": "Student Login",
+      "message": "John Doe logged in",
+      "user_id": "uuid",
+      "metadata": { "userEmail": "john@example.com" },
+      "is_read": false,
+      "created_at": "2025-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+---
+
+#### Mark all as read
+
+```http
+PATCH /api/admin/notifications
+```
+
+```json
+{
+  "markAllRead": true
+}
+```
+
+---
+
+### 3.6 Analytics
+
+| Method | Endpoint                                   | Description                    | Status   |
+| ------ | ------------------------------------------ | ------------------------------ | -------- |
+| GET    | `/api/admin/analytics/kpis`                | Key performance indicators     | ✅ Built |
+| GET    | `/api/admin/analytics/activity`            | Student activity over time     | ✅ Built |
+| GET    | `/api/admin/analytics/subscriptions`       | Subscription distribution      | ✅ Built |
+| GET    | `/api/admin/analytics/quiz-performance`    | Quiz performance by level      | ✅ Built |
+| GET    | `/api/admin/analytics/level-distribution`  | Students per level             | ✅ Built |
+
+#### GET KPIs
+
+```http
+GET /api/admin/analytics/kpis
+```
+
+Response:
+
+```json
+{
+  "totalStudents": 150,
+  "activeThisWeek": 25,
+  "avgQuizScore": 78.5,
+  "overallPassRate": 72.3
+}
+```
+
+---
+
+#### GET activity
+
+```http
+GET /api/admin/analytics/activity?range=weekly
+```
+
+---
+
+#### GET subscriptions
+
+```http
+GET /api/admin/analytics/subscriptions
+```
+
+Response:
+
+```json
+{
+  "free": 120,
+  "paid": 30,
+  "conversionRate": 20.0
+}
+```
+
+---
+
+#### GET quiz performance
+
+```http
+GET /api/admin/analytics/quiz-performance
+```
+
+---
+
+#### GET level distribution
+
+```http
+GET /api/admin/analytics/level-distribution
+```
+
+---
+
 ## 4. 🌐 Public Website APIs
 
 > Consumed by the **Public/Showcase Website** (separate Vercel project). That project fetches content from the Admin Dashboard's API.
@@ -260,9 +391,10 @@ Response:
 
 ### 5.1 Courses
 
-| Method | Endpoint              | Description           | Status   |
-| ------ | --------------------- | --------------------- | -------- |
-| GET    | `/api/mobile/courses` | Get available courses | ✅ Built |
+| Method | Endpoint                        | Description           | Status   |
+| ------ | ------------------------------- | --------------------- | -------- |
+| GET    | `/api/mobile/courses`           | Get available courses | ✅ Built |
+| POST   | `/api/mobile/courses/[id]/complete` | Mark course complete | ✅ Built |
 
 #### GET available courses
 
@@ -276,10 +408,18 @@ Response:
 [
   {
     "id": "course-id",
-    "title": "React Basics",
+    "title": "French Basics",
     "level": "A1"
   }
 ]
+```
+
+---
+
+#### POST mark course complete
+
+```http
+POST /api/mobile/courses/[id]/complete
 ```
 
 ---
@@ -311,14 +451,14 @@ Response:
 ```json
 {
   "id": "quiz-id",
-  "title": "React Quiz",
+  "title": "French Quiz 1",
   "questions": [
     {
       "id": "q1",
-      "question": "What is React?",
+      "question": "What is 'hello' in French?",
       "answers": [
-        { "id": "a1", "text": "Framework" },
-        { "id": "a2", "text": "Library" }
+        { "id": "a1", "text": "Au revoir" },
+        { "id": "a2", "text": "Bonjour" }
       ]
     }
   ]
@@ -371,7 +511,19 @@ Response:
 
 ---
 
-## 6. 🔁 Data Flow Summary
+## 6. 🔐 Auth APIs
+
+| Method | Endpoint                 | Description              | Status   |
+| ------ | ------------------------ | ------------------------ | -------- |
+| POST   | `/api/auth/login`        | Admin/student login      | ✅ Built |
+| POST   | `/api/auth/logout`       | Logout                   | ✅ Built |
+| GET    | `/api/auth/profile`      | Get current user profile | ✅ Built |
+| POST   | `/api/auth/lookup-email` | Lookup email from username | ✅ Built |
+| POST   | `/api/auth/notify-login` | Send login notification  | ✅ Built |
+
+---
+
+## 7. 🔁 Data Flow Summary
 
 ---
 
@@ -399,7 +551,7 @@ Public Website (Vercel #2) → GET /api/public/cms (Vercel #1 Admin) → Supabas
 
 ---
 
-## 7. ⚠️ Important Notes
+## 8. ⚠️ Important Notes
 
 - Never expose correct answers in quiz API
 - Validate all inputs
@@ -409,7 +561,7 @@ Public Website (Vercel #2) → GET /api/public/cms (Vercel #1 Admin) → Supabas
 
 ---
 
-## 8. 🚀 Future Enhancements
+## 9. 🚀 Future Enhancements
 
 - Pagination for large data
 - Search/filter APIs
@@ -422,8 +574,8 @@ Public Website (Vercel #2) → GET /api/public/cms (Vercel #1 Admin) → Supabas
 
 This API layer connects:
 
-- Admin Dashboard → Database
-- Mobile App → Database
+- Admin Dashboard → Database (25 endpoints)
+- Mobile App → Database (6 endpoints)
 - Public Website → Admin CMS API → Database
 
 It ensures:
