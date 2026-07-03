@@ -52,14 +52,14 @@ export default async function QuizPage({
 
   if (questionsError || !questions || questions.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 dark:from-gray-950 dark:to-gray-900">
-        <div className="text-center space-y-3">
-          <p className="text-gray-500 dark:text-gray-400 text-sm">
+      <div className="min-h-[100svh] bg-[#F5F5F7] flex items-center justify-center px-5">
+        <div className="text-center flex flex-col gap-3">
+          <p className="text-[#999999] text-[13px]">
             This quiz has no questions yet.
           </p>
           <Link
             href="/temp/dashboard"
-            className="text-blue-600 dark:text-blue-400 text-sm hover:underline"
+            className="text-[#7C3AED] text-[13px] font-semibold no-underline"
           >
             ← Back to dashboard
           </Link>
@@ -92,56 +92,60 @@ export default async function QuizPage({
   const quizData = { ...quiz, questions: questionsWithAnswers };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-gray-950 dark:to-gray-900">
-      {/* Header */}
-      <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4">
-        <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <Link
-            href={
-              quiz.course_id
-                ? `/temp/dashboard/courses/${quiz.course_id}`
-                : "/temp/dashboard"
-            }
-            className="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white transition-colors"
+    <>
+      {/* ── Header ──────────────────────────────────────── */}
+      <header className="flex items-center gap-3 px-5 pt-4 pb-5">
+        <Link
+          href={
+            quiz.course_id
+              ? `/temp/dashboard/courses/${quiz.course_id}`
+              : "/temp/dashboard"
+          }
+          className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#111111] shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.08)] no-underline"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2.5}
           >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M10 19l-7-7m0 0l7-7m-7 7h18"
-              />
-            </svg>
-          </Link>
-          <h1 className="font-semibold text-gray-800 dark:text-gray-200 text-sm truncate">
-            {quiz.title}
-          </h1>
-        </div>
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
+          </svg>
+        </Link>
+        <h1 className="text-[17px] font-semibold text-[#111111] truncate">
+          {quiz.title}
+        </h1>
       </header>
 
-      <main className="max-w-2xl mx-auto px-6 py-10 space-y-6">
-        {/* Quiz header */}
-        <div className="space-y-1">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+      {/* ── Hero banner ─────────────────────────────────── */}
+      <div className="mx-5 mb-6 rounded-[24px] bg-[#A78BFA] p-5 relative overflow-hidden shadow-[0_4px_20px_rgba(167,139,250,0.35)]">
+        <div className="absolute -right-8 -top-8 w-36 h-36 rounded-full bg-white/10" />
+        <div className="absolute right-8 -bottom-4 w-20 h-20 rounded-full bg-white/[0.07]" />
+        <div className="relative z-10">
+          <div className="inline-flex items-center gap-1.5 bg-white/25 rounded-[20px] px-3 py-1 mb-3">
+            <span className="text-[11px] font-medium text-[#111111]">
+              {questions.length} question{questions.length !== 1 ? "s" : ""} ·
+              Pass: {quiz.passing_score}%
+            </span>
+          </div>
+          <h2 className="text-[22px] font-black text-[#111111] leading-tight tracking-[-0.5px] mb-1">
             {quiz.title}
           </h2>
           {quiz.description && (
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {quiz.description}
-            </p>
+            <p className="text-[13px] text-[#444444]">{quiz.description}</p>
           )}
-          <p className="text-xs text-gray-400 dark:text-gray-500">
-            {questions.length} question{questions.length !== 1 ? "s" : ""} ·
-            Passing score: {quiz.passing_score}%
-          </p>
         </div>
+      </div>
+
+      {/* ── Quiz form ───────────────────────────────────── */}
+      <div className="px-5">
         <QuizForm quiz={quizData} />
-      </main>
-    </div>
+      </div>
+    </>
   );
 }

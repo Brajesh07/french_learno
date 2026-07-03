@@ -19,17 +19,50 @@ FrenchLearno is a French language learning platform with three surfaces:
 | Public Website  | Next.js App Router | Prospective users |
 
 Backend: Supabase (PostgreSQL + Auth + RLS)
-Media: Cloudinary (images, audio, video)
+Media: Cloudinary (images, audio, video) — env configured
 
 ---
 
-## 🗂️ Expected Folder Structure
+## 🗂️ Actual Project Structure
 
-/frenchlearno
-/mobile → React Native app (student-facing)
-/admin → Next.js admin dashboard
-/web → Next.js public website
-/supabase → migrations, RLS policies, seed data
+```
+src/
+├── app/
+│   ├── api/
+│   │   ├── admin/          # 15 admin API routes
+│   │   ├── auth/           # 5 auth API routes
+│   │   ├── mobile/         # 6 mobile API routes
+│   │   └── public/         # 1 public API route
+│   ├── dashboard/          # Admin dashboard pages
+│   │   ├── analytics/      # Analytics page with 4 chart components
+│   │   ├── courses/        # Course management (list, create, edit, detail)
+│   │   ├── notifications/  # Notifications page
+│   │   ├── quizzes/        # Quiz management (list, create, edit, detail)
+│   │   └── students/       # Student management (list, detail)
+│   ├── login/              # Login page
+│   └── temp/               # Student-facing test pages (login, signup, dashboard)
+├── components/
+│   ├── auth/               # AuthProvider, LoginForm
+│   ├── layout/             # Sidebar, Header, DashboardLayout
+│   └── ui/                 # Button, Input, Textarea, SimpleRichTextEditor, ThemeProvider
+├── hooks/                  # useAuth
+├── lib/
+│   ├── supabase/           # client.ts, server.ts, auth-helpers.ts, notifications.ts
+│   ├── types.ts            # TypeScript types
+│   ├── theme-types.ts      # Theme types
+│   └── utils.ts            # Utility functions (cn)
+├── styles/                 # Global styles
+└── middleware.ts           # Auth middleware
+
+supabase/
+├── migrations/             # 4 SQL migration files
+│   ├── 001_initial_schema.sql
+│   ├── 002_add_student_fields.sql
+│   ├── 003_notifications.sql
+│   └── 004_quiz_attempt_answers.sql
+└── seeds/
+    └── seed.ts             # Seed script
+```
 
 ---
 
@@ -46,6 +79,8 @@ create table public.profiles (
   phone text,
   class text,
   role text not null default 'student' check (role in ('student', 'admin')),
+  is_active boolean not null default true,
+  has_subscription boolean not null default false,
   created_at timestamptz default now()
 );
 ```
@@ -63,7 +98,8 @@ create table public.courses (
   content_image_url text,
   content_video_url text,
   is_published boolean default false,
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
 );
 ```
 
@@ -77,7 +113,8 @@ create table public.quizzes (
   description text,
   passing_score integer default 70,
   is_published boolean default false,
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
 );
 ```
 
@@ -89,6 +126,8 @@ create table public.quiz_questions (
   quiz_id uuid references public.quizzes(id) on delete cascade,
   question text not null,
   type text default 'mcq',
+  points integer default 1,
+  explanation text,
   created_at timestamptz default now()
 );
 ```
@@ -109,10 +148,23 @@ create table public.quiz_answers (
 ```sql
 create table public.quiz_attempts (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid references public.profiles(id),
-  quiz_id uuid references public.quizzes(id),
+  user_id uuid references public.profiles(id) on delete cascade,
+  quiz_id uuid references public.quizzes(id) on delete cascade,
   score integer,
   passed boolean,
+  created_at timestamptz default now()
+);
+```
+
+### quiz_attempt_answers
+
+```sql
+create table if not exists public.quiz_attempt_answers (
+  id uuid primary key default gen_random_uuid(),
+  attempt_id uuid not null references public.quiz_attempts(id) on delete cascade,
+  question_id uuid not null references public.quiz_questions(id) on delete cascade,
+  selected_answer_id uuid references public.quiz_answers(id) on delete set null,
+  is_correct boolean not null,
   created_at timestamptz default now()
 );
 ```
@@ -122,8 +174,8 @@ create table public.quiz_attempts (
 ```sql
 create table public.user_progress (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid references public.profiles(id),
-  course_id uuid references public.courses(id),
+  user_id uuid references public.profiles(id) on delete cascade,
+  course_id uuid references public.courses(id) on delete cascade,
   completed boolean default false,
   completed_at timestamptz
 );
@@ -134,7 +186,7 @@ create table public.user_progress (
 ```sql
 create table public.subscriptions (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid references public.profiles(id),
+  user_id uuid references public.profiles(id) on delete cascade,
   plan text default 'free',
   status text default 'active',
   start_date timestamptz,
@@ -158,6 +210,21 @@ create table public.showcase_content (
   is_visible boolean default true,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
+);
+```
+
+### notifications
+
+```sql
+create table public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  type text not null check (type in ('login', 'quiz_complete', 'course_complete', 'signup')),
+  title text not null,
+  message text not null,
+  user_id uuid references public.profiles(id) on delete set null,
+  metadata jsonb not null default '{}',
+  is_read boolean not null default false,
+  created_at timestamptz not null default now()
 );
 ```
 
@@ -198,7 +265,8 @@ create table public.showcase_content (
 - Quiz management: create quizzes, add MCQ questions + answers, set passing score
 - Subscription management: toggle users between free and paid
 - CMS editor: edit showcase_content rows for the public /french-learning page
-- Basic analytics: student progress, quiz performance, active users
+- Analytics: KPIs, activity charts, quiz performance, level distribution, subscription metrics
+- Notifications: student activity events (login, signup, quiz/course completion)
 
 ---
 
@@ -217,8 +285,8 @@ create table public.showcase_content (
 | Layer     | Technology                         |
 | --------- | ---------------------------------- |
 | Mobile    | React Native CLI                   |
-| Web/Admin | Next.js 14+ (App Router)           |
-| Styling   | Tailwind CSS                       |
+| Web/Admin | Next.js 15.5 (App Router)          |
+| Styling   | Tailwind CSS 4                     |
 | Backend   | Supabase (Auth + PostgreSQL + RLS) |
 | Media     | Cloudinary                         |
 | Language  | TypeScript throughout              |
@@ -245,11 +313,11 @@ create table public.showcase_content (
 
 Phase 1 — Foundation
 
-1. Supabase staging setup + all schema migrations
-2. RLS policies for all tables
-3. Seed data (admin user, sample courses, quizzes)
+1. Supabase staging setup + all schema migrations ✅
+2. RLS policies for all tables ✅
+3. Seed data (admin user, sample courses, quizzes) ✅
 
-Phase 2 — Admin Dashboard 4. Admin auth (login, protected routes) 5. Course management (CRUD + Cloudinary upload) 6. Quiz management (questions + answers) 7. Student management + subscription toggle 8. CMS editor for showcase content 9. Basic analytics
+Phase 2 — Admin Dashboard 4. Admin auth (login, protected routes) ✅ 5. Course management (CRUD + Cloudinary upload) ✅ 6. Quiz management (questions + answers) ✅ 7. Student management + subscription toggle ✅ 8. CMS editor for showcase content ⚠️ **API built, UI missing** 9. Basic analytics ✅
 
 Phase 3 — Mobile App 10. Auth (signup + login) 11. Student dashboard 12. Course listing + content viewer 13. Quiz flow (attempt, score, pass/fail, level unlock) 14. Progress tracking 15. Profile management
 
@@ -259,12 +327,53 @@ Phase 5 — Production 18. Mirror schema to production Supabase 19. Environment 
 
 ---
 
-## ✅ Your First Task
+## ✅ Current Status (as of scan)
 
-1. Scan all existing files in this project
-2. Report what is already built, what is partial, and what is missing
-3. Identify any inconsistencies or issues with existing code
-4. Then ask me which phase to start (or continue) building
+### What's Built (~80% of admin dashboard)
 
-Always write TypeScript. Always follow the folder structure above.
-Never skip RLS policies. Ask before making major architectural decisions.
+- Auth system (login, session, middleware)
+- Dashboard layout (sidebar, header, theme)
+- Dashboard page (live stats, activity feed)
+- Course management (full CRUD)
+- Quiz management (full CRUD with question builder + live preview)
+- Student management (list with search/pagination, detail page)
+- Analytics page (KPIs, 4 chart types, all connected to real APIs)
+- Notifications page (list, mark all read, unread badges)
+- All admin APIs (15 endpoints)
+- All mobile APIs (6 endpoints)
+- All auth APIs (5 endpoints)
+- All public APIs (1 endpoint)
+- Database schema (10 tables with RLS)
+- Environment variables configured
+
+### What's Missing
+
+- CMS editor UI (API exists, no frontend)
+- `/api/mobile/progress` endpoint
+- Mobile app frontend (React Native)
+- Public website (Next.js)
+- Upload Test page (sidebar link exists, no page)
+- Production deployment
+
+---
+
+## 📝 Key Notes for AI Assistant
+
+1. **Environment variables ARE configured** — `.env.local` has Supabase and Cloudinary keys
+2. **Student endpoints use `/api/admin/list-students` and `/api/admin/student/[uid]`** — there is NO `/api/admin/students` route
+3. **Dashboard stats are NOT hardcoded** — they fetch from real API routes
+4. **Analytics page IS fully built** with real API connections
+5. **Notifications page IS fully built** with mark-all-read functionality
+6. **4 Supabase migrations** exist in `supabase/migrations/`
+7. **Sidebar links**: Dashboard, Students, Courses, Quizzes, Upload Test, Notifications, Analytics
+
+---
+
+## 🎯 Next Steps
+
+1. Build CMS editor UI in admin dashboard
+2. Build `/api/mobile/progress` endpoint
+3. Build React Native mobile app
+4. Build public website
+5. Build Upload Test page
+6. Production deployment

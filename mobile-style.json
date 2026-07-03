@@ -1,0 +1,519 @@
+{
+  "designSystem": {
+    "name": "FrenchLearnor Mobile UI System",
+    "version": "1.0.0",
+    "platform": "iOS / React Native / Flutter",
+    "description": "A vibrant, playful French learning mobile app UI system with bold color blocks, rounded cards, an interactive week calendar strip, and a dark pill-shaped bottom nav bar",
+
+    "colorPalette": {
+      "background": {
+        "screen": "#F5F5F7",
+        "card": "#FFFFFF"
+      },
+      "brand": {
+        "purple": "#A78BFA",
+        "purpleDark": "#7C3AED",
+        "purpleLight": "#C4B5FD"
+      },
+      "cardColors": {
+        "yellow": "#FBBF24",
+        "blue": "#93C5FD",
+        "pink": "#F9A8D4",
+        "purple": "#A78BFA"
+      },
+      "text": {
+        "primary": "#111111",
+        "secondary": "#555555",
+        "muted": "#999999",
+        "onDark": "#FFFFFF",
+        "onColored": "#111111"
+      },
+      "nav": {
+        "background": "#1A1A1A",
+        "activeIcon": "#FFFFFF",
+        "inactiveIcon": "#888888",
+        "activeBackground": "#FFFFFF"
+      },
+      "calendar": {
+        "selectedBackground": "#111111",
+        "selectedText": "#FFFFFF",
+        "defaultText": "#555555",
+        "dotActive": "#111111",
+        "dotInactive": "transparent",
+        "cellBorder": "#E5E5E5"
+      },
+      "badge": {
+        "background": "#FFFFFF",
+        "text": "#555555",
+        "border": "rgba(0,0,0,0.08)"
+      },
+      "avatar": {
+        "border": "#FFFFFF",
+        "overlapSpacing": "-8px"
+      }
+    },
+
+    "typography": {
+      "fontFamily": {
+        "primary": "SF Pro Display / Inter / System sans-serif",
+        "heading": "SF Pro Display / Helvetica Neue Bold"
+      },
+      "scales": {
+        "screenTitle": {
+          "fontSize": "28px",
+          "fontWeight": "800",
+          "lineHeight": "1.2",
+          "letterSpacing": "-0.5px"
+        },
+        "greetingName": {
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "1.3"
+        },
+        "greetingDate": {
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "color": "#999999"
+        },
+        "heroBannerTitle": {
+          "fontSize": "26px",
+          "fontWeight": "800",
+          "lineHeight": "1.2",
+          "color": "#111111"
+        },
+        "heroBannerSubtitle": {
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "color": "#444444"
+        },
+        "sectionHeading": {
+          "fontSize": "20px",
+          "fontWeight": "700",
+          "color": "#111111",
+          "marginBottom": "12px"
+        },
+        "cardTitle": {
+          "fontSize": "22px",
+          "fontWeight": "700",
+          "lineHeight": "1.2",
+          "color": "#111111"
+        },
+        "cardMeta": {
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "color": "#333333",
+          "lineHeight": "1.6"
+        },
+        "badgeText": {
+          "fontSize": "11px",
+          "fontWeight": "500",
+          "color": "#555555",
+          "letterSpacing": "0.2px"
+        },
+        "calendarDay": {
+          "fontSize": "11px",
+          "fontWeight": "400",
+          "color": "#999999",
+          "textTransform": "capitalize"
+        },
+        "calendarDate": {
+          "fontSize": "15px",
+          "fontWeight": "600",
+          "color": "#333333"
+        },
+        "trainerLabel": {
+          "fontSize": "11px",
+          "fontWeight": "400",
+          "color": "#666666"
+        },
+        "trainerName": {
+          "fontSize": "14px",
+          "fontWeight": "600",
+          "color": "#111111"
+        }
+      }
+    },
+
+    "spacing": {
+      "unit": "4px",
+      "scale": {
+        "xs": "4px",
+        "sm": "8px",
+        "md": "16px",
+        "lg": "20px",
+        "xl": "24px",
+        "xxl": "32px"
+      },
+      "screenHorizontalPadding": "20px",
+      "screenTopPadding": "16px",
+      "sectionSpacing": "24px",
+      "cardGap": "12px",
+      "cardPadding": "16px",
+      "calendarCellPadding": "10px 6px"
+    },
+
+    "borderRadius": {
+      "card": "20px",
+      "heroBanner": "24px",
+      "calendarCell": "14px",
+      "badge": "20px",
+      "avatar": "50%",
+      "navBar": "40px",
+      "navActiveItem": "50%",
+      "socialIconButton": "50%"
+    },
+
+    "shadows": {
+      "card": "0 4px 20px rgba(0, 0, 0, 0.06)",
+      "navBar": "0 -4px 24px rgba(0, 0, 0, 0.12)",
+      "calendarCell": "0 2px 8px rgba(0, 0, 0, 0.04)"
+    },
+
+    "components": {
+      "screenHeader": {
+        "description": "Top bar with avatar, greeting text, and search icon",
+        "layout": {
+          "display": "flex",
+          "flexDirection": "row",
+          "justifyContent": "space-between",
+          "alignItems": "center",
+          "paddingHorizontal": "20px",
+          "paddingTop": "16px"
+        },
+        "leftSection": {
+          "layout": "row with avatar + text stack",
+          "avatar": {
+            "size": "42px",
+            "shape": "circle",
+            "border": "2px solid #FFFFFF"
+          },
+          "textStack": {
+            "layout": "column",
+            "greeting": {
+              "fontSize": "17px",
+              "fontWeight": "600"
+            },
+            "date": {
+              "fontSize": "13px",
+              "color": "#999999"
+            }
+          }
+        },
+        "rightSection": {
+          "searchButton": {
+            "size": "40px",
+            "shape": "circle",
+            "background": "#FFFFFF",
+            "iconColor": "#111111",
+            "shadow": "0 2px 8px rgba(0,0,0,0.08)"
+          }
+        }
+      },
+
+      "heroBannerCard": {
+        "description": "Full-width promotional banner with text on left and 3D illustration on right",
+        "layout": {
+          "position": "relative",
+          "overflow": "hidden",
+          "borderRadius": "24px",
+          "height": "160px",
+          "display": "flex",
+          "flexDirection": "row",
+          "alignItems": "flex-start",
+          "padding": "20px"
+        },
+        "background": "#A78BFA",
+        "contentSide": {
+          "flex": "1",
+          "layout": "column"
+        },
+        "illustrationSide": {
+          "position": "absolute",
+          "right": "0",
+          "bottom": "0",
+          "width": "45%"
+        },
+        "avatarGroup": {
+          "layout": "row",
+          "overlap": "-8px",
+          "avatarSize": "28px",
+          "avatarBorder": "2px solid #A78BFA",
+          "overflowBadge": {
+            "background": "#7C3AED",
+            "color": "#FFFFFF",
+            "fontSize": "11px",
+            "fontWeight": "600",
+            "size": "28px",
+            "shape": "circle"
+          }
+        }
+      },
+
+      "weekCalendarStrip": {
+        "description": "Horizontal 7-day scrollable calendar with active day indicator dot and selected day filled circle",
+        "layout": {
+          "display": "flex",
+          "flexDirection": "row",
+          "justifyContent": "space-between",
+          "paddingHorizontal": "20px",
+          "gap": "6px"
+        },
+        "calendarCell": {
+          "width": "44px",
+          "height": "64px",
+          "display": "flex",
+          "flexDirection": "column",
+          "alignItems": "center",
+          "justifyContent": "center",
+          "gap": "4px",
+          "borderRadius": "14px",
+          "border": "1px solid #E5E5E5",
+          "background": "#FFFFFF"
+        },
+        "activityDot": {
+          "size": "5px",
+          "shape": "circle",
+          "background": "#111111",
+          "position": "above day name"
+        },
+        "selectedState": {
+          "background": "#111111",
+          "dayTextColor": "#FFFFFF",
+          "dateTextColor": "#FFFFFF",
+          "border": "none"
+        },
+        "defaultState": {
+          "background": "#FFFFFF",
+          "border": "1px solid #E5E5E5"
+        }
+      },
+
+      "planCardGrid": {
+        "description": "2-column grid layout for plan activity cards",
+        "layout": {
+          "display": "grid",
+          "gridTemplateColumns": "1fr 1fr",
+          "gap": "12px",
+          "paddingHorizontal": "20px"
+        },
+        "leftColumn": "Single tall card spanning full column height",
+        "rightColumn": "Two stacked cards"
+      },
+
+      "activityCard": {
+        "description": "Colored card showing class info, difficulty badge, and trainer",
+        "variants": {
+          "tall": {
+            "height": "220px",
+            "layout": "column with space-between"
+          },
+          "short": {
+            "height": "104px",
+            "layout": "relative with overflow"
+          }
+        },
+        "baseStyle": {
+          "borderRadius": "20px",
+          "padding": "16px",
+          "display": "flex",
+          "flexDirection": "column",
+          "overflow": "hidden"
+        },
+        "difficultyBadge": {
+          "position": "top-left",
+          "background": "rgba(255,255,255,0.7)",
+          "backdropFilter": "blur(4px)",
+          "borderRadius": "20px",
+          "padding": "4px 12px",
+          "fontSize": "11px",
+          "fontWeight": "500",
+          "color": "#444444",
+          "border": "1px solid rgba(0,0,0,0.06)"
+        },
+        "illustrationOverflow": {
+          "position": "absolute",
+          "right": "-10px",
+          "bottom": "-10px",
+          "width": "80px",
+          "zIndex": "0"
+        },
+        "trainerRow": {
+          "layout": "row",
+          "alignItems": "center",
+          "gap": "8px",
+          "avatar": {
+            "size": "32px",
+            "shape": "circle"
+          },
+          "textStack": {
+            "label": {
+              "fontSize": "11px",
+              "color": "#666666"
+            },
+            "name": {
+              "fontSize": "14px",
+              "fontWeight": "600"
+            }
+          }
+        }
+      },
+
+      "socialLinksCard": {
+        "description": "Small card with circular social media icon buttons",
+        "background": "#F9A8D4",
+        "borderRadius": "20px",
+        "height": "104px",
+        "layout": {
+          "display": "flex",
+          "flexDirection": "row",
+          "alignItems": "center",
+          "justifyContent": "center",
+          "gap": "16px",
+          "padding": "16px"
+        },
+        "iconButton": {
+          "size": "40px",
+          "shape": "circle",
+          "background": "rgba(255,255,255,0.5)",
+          "iconColor": "#FFFFFF",
+          "iconSize": "18px"
+        }
+      },
+
+      "bottomNavBar": {
+        "description": "Pill-shaped dark floating bottom navigation bar",
+        "layout": {
+          "position": "absolute",
+          "bottom": "24px",
+          "left": "20px",
+          "right": "20px",
+          "height": "64px",
+          "background": "#1A1A1A",
+          "borderRadius": "40px",
+          "display": "flex",
+          "flexDirection": "row",
+          "alignItems": "center",
+          "justifyContent": "space-around",
+          "paddingHorizontal": "8px",
+          "boxShadow": "0 -4px 24px rgba(0,0,0,0.12)"
+        },
+        "navItem": {
+          "default": {
+            "size": "44px",
+            "iconColor": "#888888"
+          },
+          "active": {
+            "size": "44px",
+            "background": "#FFFFFF",
+            "borderRadius": "50%",
+            "iconColor": "#111111"
+          }
+        }
+      }
+    },
+
+    "layoutPatterns": {
+      "screenStructure": {
+        "order": [
+          "Status bar (system)",
+          "Screen header (avatar + greeting + search)",
+          "Hero banner card",
+          "Week calendar strip",
+          "Section heading (Your plan)",
+          "2-column card grid",
+          "Bottom navigation bar"
+        ],
+        "scrollBehavior": "Vertical scroll, bottom nav fixed"
+      },
+      "twoColumnGrid": {
+        "pattern": "Left: 1 tall card | Right: 1 short card + 1 short card",
+        "gap": "12px",
+        "columns": "1fr 1fr"
+      }
+    },
+
+    "designTokens": {
+      "cardColorMap": {
+        "yellow": "#FBBF24",
+        "blue": "#93C5FD",
+        "pink": "#F9A8D4",
+        "purple": "#A78BFA"
+      },
+      "difficultyLevels": {
+        "light": { "label": "Light", "color": "rgba(255,255,255,0.7)" },
+        "medium": { "label": "Medium", "color": "rgba(255,255,255,0.7)" },
+        "hard": { "label": "Hard", "color": "rgba(255,255,255,0.7)" }
+      }
+    },
+
+    "animations": {
+      "cardPress": {
+        "transform": "scale(0.97)",
+        "transition": "0.15s ease"
+      },
+      "calendarSelect": {
+        "background": "Animate fill from white to #111111",
+        "duration": "0.2s ease"
+      },
+      "navIconSwitch": {
+        "background": "Fade in white circle",
+        "duration": "0.2s ease"
+      }
+    },
+
+    "responsiveGuidelines": {
+      "platform": "Mobile-first (375px base width)",
+      "safeAreas": {
+        "top": "Respect iOS/Android status bar height",
+        "bottom": "Add padding for home indicator / gesture bar"
+      },
+      "scalingApproach": "Use relative units (flex, %) for card widths; fixed px for icon sizes and avatar sizes"
+    },
+
+    "accessibilityConsiderations": {
+      "contrast": {
+        "textOnYellow": "Dark text #111111 on #FBBF24 — WCAG AA",
+        "textOnPurple": "Dark text #111111 on #A78BFA — check contrast",
+        "navIcons": "White icons on dark nav — WCAG AA"
+      },
+      "touchTargets": {
+        "minimum": "44x44px for all interactive elements",
+        "navItems": "Full nav bar height applies"
+      },
+      "semantics": {
+        "nav": "Use role=tabbar with accessible labels",
+        "cards": "Use role=button or pressable with descriptive label",
+        "calendar": "Use aria-selected on active day"
+      }
+    },
+
+    "implementationNotes": {
+      "framework": {
+        "recommended": "React Native or Flutter",
+        "web": "Responsive HTML/CSS with mobile-first layout"
+      },
+      "components": [
+        "ScreenHeader",
+        "HeroBannerCard",
+        "WeekCalendarStrip",
+        "ActivityCard (tall | short)",
+        "SocialLinksCard",
+        "BottomNavBar",
+        "DifficultyBadge",
+        "AvatarGroup",
+        "TrainerRow"
+      ],
+      "colorThemingStrategy": "Pass colorVariant prop ('yellow' | 'blue' | 'pink' | 'purple') to card components and map to token values",
+      "illustrationHandling": "Use absolute positioning with overflow hidden on card; place illustration bottom-right",
+      "navBarPositioning": "Use absolute + bottom offset with safe area insets"
+    },
+
+    "designPrinciples": {
+      "playful": "Saturated block colors and bold rounded corners create energetic, friendly feel",
+      "bold": "Heavy font weights and large card titles establish clear visual hierarchy",
+      "structured": "Consistent 2-column grid and spacing system creates calm despite color diversity",
+      "accessible": "Dark text on all colored cards ensures readability",
+      "modern": "Floating pill nav bar and soft shadows give depth without heavy borders"
+    }
+  }
+}

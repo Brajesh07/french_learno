@@ -41,5 +41,6 @@ export async function updateProfile(formData: FormData) {
   }
 
   revalidatePath("/temp/dashboard");
+  revalidatePath("/temp/dashboard/profile");
   return { success: true };
 }

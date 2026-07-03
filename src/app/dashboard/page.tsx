@@ -85,58 +85,56 @@ export default function DashboardPage() {
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
 
   useEffect(() => {
-    async function fetchStats() {
+    async function fetchDashboard() {
       try {
-        const [studentsRes, coursesRes, publishedRes, quizzesRes] =
-          await Promise.all([
-            fetch("/api/admin/list-students?limit=1", {
-              credentials: "include",
-            }),
-            fetch("/api/admin/courses?limit=1", { credentials: "include" }),
-            fetch("/api/admin/courses?isPublished=true&limit=1", {
-              credentials: "include",
-            }),
-            fetch("/api/admin/quizzes?limit=1", { credentials: "include" }),
-          ]);
-
-        const [studentsData, coursesData, publishedData, quizzesData] =
-          await Promise.all([
-            studentsRes.ok ? studentsRes.json() : { total: 0 },
-            coursesRes.ok ? coursesRes.json() : { total: 0 },
-            publishedRes.ok ? publishedRes.json() : { total: 0 },
-            quizzesRes.ok ? quizzesRes.json() : { total: 0 },
-          ]);
-
-        setStats({
-          totalStudents: studentsData.total ?? 0,
-          totalCourses: coursesData.total ?? 0,
-          publishedCourses: publishedData.total ?? 0,
-          totalQuizzes: quizzesData.total ?? 0,
-        });
-      } catch (err) {
-        console.error("Failed to fetch dashboard stats:", err);
-      } finally {
-        setStatsLoading(false);
-      }
-    }
-
-    async function fetchActivity() {
-      try {
-        const [studentsRes, coursesRes, quizzesRes] = await Promise.all([
+        const [
+          studentsCountRes,
+          coursesCountRes,
+          publishedCountRes,
+          quizzesCountRes,
+          studentsListRes,
+          coursesListRes,
+          quizzesListRes,
+        ] = await Promise.all([
+          fetch("/api/admin/list-students?limit=1", { credentials: "include" }),
+          fetch("/api/admin/courses?limit=1", { credentials: "include" }),
+          fetch("/api/admin/courses?isPublished=true&limit=1", {
+            credentials: "include",
+          }),
+          fetch("/api/admin/quizzes?limit=1", { credentials: "include" }),
           fetch("/api/admin/list-students?limit=4", { credentials: "include" }),
           fetch("/api/admin/courses?limit=4", { credentials: "include" }),
           fetch("/api/admin/quizzes?limit=4", { credentials: "include" }),
         ]);
 
-        const [studentsData, coursesData, quizzesData] = await Promise.all([
-          studentsRes.ok ? studentsRes.json() : { students: [] },
-          coursesRes.ok ? coursesRes.json() : { data: [] },
-          quizzesRes.ok ? quizzesRes.json() : { data: [] },
+        const [
+          studentsCountData,
+          coursesCountData,
+          publishedCountData,
+          quizzesCountData,
+          studentsListData,
+          coursesListData,
+          quizzesListData,
+        ] = await Promise.all([
+          studentsCountRes.ok ? studentsCountRes.json() : { total: 0 },
+          coursesCountRes.ok ? coursesCountRes.json() : { total: 0 },
+          publishedCountRes.ok ? publishedCountRes.json() : { total: 0 },
+          quizzesCountRes.ok ? quizzesCountRes.json() : { total: 0 },
+          studentsListRes.ok ? studentsListRes.json() : { students: [] },
+          coursesListRes.ok ? coursesListRes.json() : { data: [] },
+          quizzesListRes.ok ? quizzesListRes.json() : { data: [] },
         ]);
+
+        setStats({
+          totalStudents: studentsCountData.total ?? 0,
+          totalCourses: coursesCountData.total ?? 0,
+          publishedCourses: publishedCountData.total ?? 0,
+          totalQuizzes: quizzesCountData.total ?? 0,
+        });
 
         const activities: (ActivityItem & { rawDate: string })[] = [];
 
-        for (const s of studentsData.students ?? []) {
+        for (const s of studentsListData.students ?? []) {
           activities.push({
             id: `student-${s.id}`,
             description: `New student registered: ${s.name || s.email}`,
@@ -144,7 +142,7 @@ export default function DashboardPage() {
             rawDate: s.created_at,
           });
         }
-        for (const c of coursesData.data ?? []) {
+        for (const c of coursesListData.data ?? []) {
           activities.push({
             id: `course-${c.id}`,
             description: c.is_published
@@ -154,7 +152,7 @@ export default function DashboardPage() {
             rawDate: c.created_at,
           });
         }
-        for (const q of quizzesData.data ?? []) {
+        for (const q of quizzesListData.data ?? []) {
           activities.push({
             id: `quiz-${q.id}`,
             description: `Quiz "${q.title}" created`,
@@ -175,14 +173,14 @@ export default function DashboardPage() {
           })),
         );
       } catch (err) {
-        console.error("Failed to fetch recent activity:", err);
+        console.error("Failed to fetch dashboard data:", err);
       } finally {
+        setStatsLoading(false);
         setActivityLoading(false);
       }
     }
 
-    fetchStats();
-    fetchActivity();
+    fetchDashboard();
   }, []);
 
   return (

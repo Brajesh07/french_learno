@@ -14,31 +14,27 @@ Each phase:
 
 ---
 
-## 🔴 Phase 0 — Fix & Connect (Current Priority)
+## 🔴 Phase 0 — Remaining Critical Items
 
 ### 🎯 Goal
 
-Unblock the app so it can run with real data and fix known broken systems.
+Complete the remaining critical features before mobile app and public website.
 
 ---
 
 ### Tasks
 
-- [ ] Configure Supabase env vars (`.env.local`) — **app cannot run without this**
-- [ ] Reconcile and fix student API endpoints — use `GET /api/admin/students` and `GET/PATCH /api/admin/students/[id]` consistently
-- [ ] Build `/test/student-login` web page — validate student auth and RLS logic before building React Native screens
-- [ ] Fix broken student system routes
-- [ ] Connect dashboard stats to real DB data — remove hardcoded/fake values
-- [ ] Build CMS UI in admin dashboard — API exists, no editor frontend built yet
+- [ ] Build CMS editor UI in admin dashboard — API exists, no editor frontend built yet
+- [ ] Build `/api/mobile/progress` endpoint — currently missing
+- [ ] Build Upload Test page — sidebar link exists but no page at `/dashboard/upload-test`
 
 ---
 
 ### ✅ Output
 
-- App runs with real Supabase data
-- Student system fully functional end-to-end
-- Dashboard shows live stats
 - Admin can edit public website content via CMS UI
+- Mobile app can fetch user progress
+- Upload test page functional
 
 ---
 
@@ -55,9 +51,9 @@ Prepare project and backend
 - [x] Create Next.js project
 - [x] Install Tailwind CSS
 - [x] Setup Supabase project (staging)
-- [ ] Configure `.env.local` ⚠️ **Not done — see Phase 0**
-- [x] Setup Supabase client (client + server)
-- [x] Create database tables (run SQL)
+- [x] Configure `.env.local` ✅ **Done — env vars configured**
+- [x] Setup Supabase client (client + server + auth-helpers)
+- [x] Create database tables (run SQL) — 4 migration files
 - [x] Enable authentication (email/password)
 
 ---
@@ -65,7 +61,7 @@ Prepare project and backend
 ### ✅ Output
 
 - Working Supabase connection
-- Database ready
+- Database ready (10 tables)
 - Auth system enabled
 
 ---
@@ -91,7 +87,9 @@ User signup & login working
   - username login
 
 - [x] Create AuthProvider
-- [x] Protect routes
+- [x] Protect routes via middleware
+- [x] Email lookup API (`/api/auth/lookup-email`)
+- [x] Login notification API (`/api/auth/notify-login`)
 
 ---
 
@@ -116,10 +114,11 @@ Basic admin panel structure
 ### Tasks
 
 - [x] Create dashboard layout
-- [x] Sidebar navigation
+- [x] Sidebar navigation (Dashboard, Students, Courses, Quizzes, Upload Test, Notifications, Analytics)
 - [x] Header with logout
 - [x] Protect admin routes
 - [x] Setup role check (`admin`)
+- [x] Dark/light theme support
 
 ---
 
@@ -141,9 +140,10 @@ Admin can manage courses
 ### Tasks
 
 - [x] Create course form
-- [x] Fetch and display courses
-- [x] Edit course
+- [x] Fetch and display courses (paginated, filterable)
+- [x] Edit course (rich-text content editor)
 - [x] Delete course
+- [x] Course detail page
 
 ---
 
@@ -180,7 +180,55 @@ Admin can create full quizzes
 
 ---
 
-## 7. 📱 Phase 6 — Student Mobile App
+## 7. 📊 Phase 6 — Analytics (Admin)
+
+### 🎯 Goal
+
+Admin can view analytics and insights
+
+---
+
+### Tasks
+
+- [x] Build analytics page with KPI cards
+- [x] Activity line chart (weekly/monthly)
+- [x] Subscription donut chart
+- [x] Quiz performance bar chart by level
+- [x] Level distribution chart
+- [x] All analytics APIs connected to real DB
+
+---
+
+### ✅ Output
+
+- Full analytics dashboard with live data
+
+---
+
+## 8. 🔔 Phase 7 — Notifications (Admin)
+
+### 🎯 Goal
+
+Admin can view student activity notifications
+
+---
+
+### Tasks
+
+- [x] Build notifications page
+- [x] Mark all as read functionality
+- [x] Unread count badge
+- [x] Notification API with pagination
+
+---
+
+### ✅ Output
+
+- Notification system functional
+
+---
+
+## 9. 📱 Phase 8 — Student Mobile App
 
 ### 🎯 Goal
 
@@ -188,7 +236,7 @@ Student can use the app on React Native
 
 ---
 
-> ⚠️ **Current Status:** Backend API routes exist (`/api/mobile/courses`, `/api/mobile/quizzes`, `/api/mobile/quizzes/[id]/submit`) but **NO React Native frontend has been built**. This phase starts from scratch on the frontend.
+> ⚠️ **Current Status:** Backend API routes exist (`/api/mobile/courses`, `/api/mobile/quizzes`, `/api/mobile/quizzes/[id]/submit`, `/api/mobile/courses/[id]/complete`) but **NO React Native frontend has been built**. This phase starts from scratch on the frontend.
 
 ---
 
@@ -216,7 +264,7 @@ Student can use the app on React Native
 
 ---
 
-## 8. 📊 Phase 7 — Quiz Attempt & Results
+## 10. 📈 Phase 9 — Quiz Attempt & Results
 
 ### 🎯 Goal
 
@@ -229,6 +277,7 @@ Complete quiz experience
 - [x] Submit quiz API
 - [x] Calculate score
 - [x] Store attempt
+- [x] Store per-question answers (`quiz_attempt_answers` table)
 - [ ] Show result screen (mobile frontend not built)
 - [ ] Show review answers (mobile frontend not built)
 
@@ -240,30 +289,7 @@ Complete quiz experience
 
 ---
 
-## 9. 📈 Phase 8 — Progress System
-
-### 🎯 Goal
-
-Track and unlock progress
-
----
-
-### Tasks
-
-- [ ] Build `/api/mobile/progress` ⚠️ Not built
-- [ ] Save user progress
-- [ ] Unlock next level
-- [ ] Display progress in dashboard
-
----
-
-### ✅ Output
-
-- Learning progression system active
-
----
-
-## 10. 🌐 Phase 9 — CMS & Public Website
+## 11. 🌐 Phase 10 — CMS & Public Website
 
 ### 🎯 Goal
 
@@ -285,7 +311,7 @@ Dynamic showcase page
 
 ---
 
-## 11. 💳 Phase 10 — Subscription (Basic)
+## 12. 💳 Phase 11 — Subscription (Basic)
 
 ### 🎯 Goal
 
@@ -307,7 +333,7 @@ Control free vs paid access
 
 ---
 
-## 12. 🔐 Phase 11 — Security & Testing
+## 13. 🔐 Phase 12 — Security & Testing
 
 ### 🎯 Goal
 
@@ -332,7 +358,7 @@ Secure and stable system
 
 ---
 
-## 13. 🚀 Phase 12 — Deployment
+## 14. 🚀 Phase 13 — Deployment
 
 ### 🎯 Goal
 
@@ -368,7 +394,7 @@ Go live
 
 ---
 
-## 14. 🧠 Development Strategy
+## 15. 🧠 Development Strategy
 
 ---
 
@@ -388,7 +414,7 @@ Build → Test → Fix → Then Move Forward
 
 ---
 
-## 15. 🏁 Final Outcome
+## 16. 🏁 Final Outcome
 
 At the end, you will have:
 
