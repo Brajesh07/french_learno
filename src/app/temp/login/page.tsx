@@ -103,7 +103,7 @@ export default function TempLoginPage() {
                 value={emailOrUsername}
                 onChange={(e) => setEmailOrUsername(e.target.value)}
                 required
-                className="w-full px-4 py-[14px] rounded-[14px] border border-[#E5E5E5] text-[15px] text-[#111111] bg-[#F5F5F7] outline-none box-border"
+                className="w-full px-4 py-[14px] rounded-[14px] border border-[#E5E5E5] text-[16px] text-[#111111] bg-[#F5F5F7] outline-none box-border"
               />
             </div>
 
@@ -121,7 +121,7 @@ export default function TempLoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full px-4 py-[14px] rounded-[14px] border border-[#E5E5E5] text-[15px] text-[#111111] bg-[#F5F5F7] outline-none box-border"
+                className="w-full px-4 py-[14px] rounded-[14px] border border-[#E5E5E5] text-[16px] text-[#111111] bg-[#F5F5F7] outline-none box-border"
               />
             </div>
 

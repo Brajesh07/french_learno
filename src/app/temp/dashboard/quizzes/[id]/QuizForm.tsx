@@ -265,39 +265,3 @@ export default function QuizForm({ quiz }: { quiz: Quiz }) {
     </div>
   );
 }
-
-interface Answer {
-  id: string;
-  answer: string;
-}
-
-interface Question {
-  id: string;
-  question: string;
-  answers: Answer[];
-}
-
-interface Quiz {
-  id: string;
-  title: string;
-  description: string | null;
-  passing_score: number;
-  course_id: string | null;
-  questions: Question[];
-}
-
-interface Result {
-  score: number;
-  passed: boolean;
-  correct: number;
-  total: number;
-  breakdown: {
-    questionId: string;
-    question: string;
-    selectedAnswerId: string;
-    selectedAnswer: string;
-    correctAnswerId: string | null;
-    correctAnswer: string;
-    isCorrect: boolean;
-  }[];
-}

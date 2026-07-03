@@ -12,21 +12,25 @@ export function BottomNav() {
         href="/temp/dashboard"
         active={pathname === "/temp/dashboard"}
         icon={<IconHome />}
+        label="Home"
       />
       <NavItem
         href="/temp/dashboard/courses"
         active={pathname.includes("/courses")}
         icon={<IconBook />}
+        label="Courses"
       />
       <NavItem
         href="/temp/dashboard/quizzes"
         active={pathname.includes("/quizzes")}
         icon={<IconQuiz />}
+        label="Quizzes"
       />
       <NavItem
         href="/temp/dashboard/profile"
         active={pathname === "/temp/dashboard/profile"}
         icon={<IconProfile />}
+        label="Profile"
       />
     </nav>
   );
@@ -36,14 +40,17 @@ function NavItem({
   href,
   icon,
   active = false,
+  label,
 }: {
   href: string;
   icon: React.ReactNode;
   active?: boolean;
+  label: string;
 }) {
   return (
     <Link
       href={href}
+      aria-label={label}
       className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 no-underline transition-colors duration-200 ${
         active ? "bg-white text-[#111111]" : "bg-transparent text-[#888888]"
       }`}

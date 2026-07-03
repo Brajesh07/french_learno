@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { LogoutButton } from "../LogoutButton";
 import { ProfileEditForm } from "./ProfileEditForm";
 
@@ -39,8 +39,6 @@ export default async function ProfilePage() {
 
   if (!profile) redirect("/temp/dashboard");
 
-  const admin = await createAdminClient();
-
   const initials = profile.name
     ? profile.name
         .split(" ")
@@ -51,20 +49,20 @@ export default async function ProfilePage() {
     : "?";
 
   // Fetch completed courses count
-  const { count: completedCount } = await admin
+  const { count: completedCount } = await supabase
     .from("user_progress")
     .select("*", { count: "exact", head: true })
     .eq("user_id", user.id)
     .eq("completed", true);
 
   // Fetch quiz attempts count
-  const { count: quizCount } = await admin
+  const { count: quizCount } = await supabase
     .from("quiz_attempts")
     .select("*", { count: "exact", head: true })
     .eq("user_id", user.id);
 
   // Best quiz score
-  const { data: bestAttempt } = await admin
+  const { data: bestAttempt } = await supabase
     .from("quiz_attempts")
     .select("score")
     .eq("user_id", user.id)

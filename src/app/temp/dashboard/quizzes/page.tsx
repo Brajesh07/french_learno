@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function QuizzesPage() {
   const supabase = await createClient();
@@ -18,15 +18,14 @@ export default async function QuizzesPage() {
 
   const isSubscribed = profile?.has_subscription ?? false;
 
-  const admin = await createAdminClient();
-  const { data: quizzes } = await admin
+  const { data: quizzes } = await supabase
     .from("quizzes")
     .select("id, title, description, passing_score, course_id")
     .eq("is_published", true)
     .order("created_at", { ascending: true });
 
   // Get course titles for display
-  const { data: courses } = await admin
+  const { data: courses } = await supabase
     .from("courses")
     .select("id, title")
     .eq("is_published", true);

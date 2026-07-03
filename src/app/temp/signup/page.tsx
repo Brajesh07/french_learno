@@ -52,7 +52,7 @@ export default function TempSignupPage() {
   }
 
   const inputCls =
-    "w-full px-4 py-[14px] rounded-[14px] border border-[#E5E5E5] text-[15px] text-[#111111] bg-[#F5F5F7] outline-none box-border";
+    "w-full px-4 py-[14px] rounded-[14px] border border-[#E5E5E5] text-[16px] text-[#111111] bg-[#F5F5F7] outline-none box-border";
   const labelCls = "block text-[13px] font-medium text-[#555555] mb-2";
 
   return (

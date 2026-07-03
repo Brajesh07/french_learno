@@ -135,12 +135,3 @@ function Field({
     </div>
   );
 }
-
-interface Profile {
-  id: string;
-  name: string;
-  username: string;
-  email: string;
-  phone: string | null;
-  class: string | null;
-}
