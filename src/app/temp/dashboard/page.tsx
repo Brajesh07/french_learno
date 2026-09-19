@@ -1,20 +1,17 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { requireStudentPage } from "@/lib/supabase/page-auth";
 import { LogoutButton } from "./LogoutButton";
 
 const CARD_COLORS = ["#FBBF24", "#93C5FD", "#F9A8D4", "#A78BFA"] as const;
 
 export default async function TempDashboardPage() {
+  const { user } = await requireStudentPage({
+    includeSubscription: true,
+    includeName: true,
+  });
+
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/temp/login");
-  }
 
   // Fetch profile
   const { data: existingProfile, error: fetchError } = await supabase

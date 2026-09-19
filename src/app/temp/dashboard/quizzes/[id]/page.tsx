@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { requireStudentPage } from "@/lib/supabase/page-auth";
 import QuizForm from "./QuizForm";
 
 export default async function QuizPage({
@@ -9,21 +10,10 @@ export default async function QuizPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
   const admin = await createAdminClient();
 
-  // Auth guard
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/temp/login");
-
-  // Check subscription (using user client)
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("has_subscription")
-    .eq("id", user.id)
-    .maybeSingle();
+  // Auth + role guard
+  const { profile } = await requireStudentPage({ includeSubscription: true });
 
   if (!profile?.has_subscription) {
     console.log("Redirecting: user has no subscription");

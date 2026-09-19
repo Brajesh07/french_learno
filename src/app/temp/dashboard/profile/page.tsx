@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { requireStudentPage } from "@/lib/supabase/page-auth";
 import { LogoutButton } from "../LogoutButton";
 import { ProfileEditForm } from "./ProfileEditForm";
 
@@ -24,20 +24,18 @@ const LEVEL_COLORS: Record<string, string> = {
 };
 
 export default async function ProfilePage() {
-  const supabase = await createClient();
+  const { user } = await requireStudentPage({
+    includeSubscription: true,
+    includeName: true,
+  });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/temp/login");
+  const supabase = await createClient();
 
   const { data: profile } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", user.id)
     .maybeSingle();
-
-  if (!profile) redirect("/temp/dashboard");
 
   const initials = profile.name
     ? profile.name

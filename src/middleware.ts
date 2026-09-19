@@ -1,14 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-/**
- * Supabase-aware middleware.
- *
- * Responsibilities:
- * 1. Refresh the Supabase session cookie on every request (keeps sessions alive).
- * 2. Redirect unauthenticated users away from protected routes.
- * 3. Redirect authenticated users away from auth routes (e.g. /login).
- */
+type AppRole = "admin" | "student";
+
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -21,12 +15,10 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          // Apply cookies to the request (for downstream server components)
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value),
           );
 
-          // Re-create response so cookies are forwarded to the browser too
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options),
@@ -36,38 +28,96 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  // IMPORTANT: Do not add any logic between createServerClient and getUser().
-  // A simple mistake can cause random logouts.
+  // Keep this directly after createServerClient
   let user = null;
   try {
     const { data } = await supabase.auth.getUser();
     user = data.user;
   } catch {
-    // If the auth check fails (e.g. network error, missing env vars),
-    // fall through and let route handlers deal with auth instead of crashing.
     return supabaseResponse;
   }
 
   const { pathname } = request.nextUrl;
 
-  const isProtectedRoute = pathname.startsWith("/dashboard");
-  const isAuthRoute = pathname.startsWith("/login");
-  const isTempProtectedRoute = pathname.startsWith("/temp/dashboard");
+  const isAdminArea = pathname.startsWith("/dashboard");
+  const isStudentArea = pathname.startsWith("/temp/dashboard");
+  const isAdminLogin = pathname.startsWith("/login");
+  const isStudentLogin = pathname.startsWith("/temp/login");
+  const isStudentSignup = pathname.startsWith("/temp/signup");
 
-  // Redirect unauthenticated users trying to access protected routes
-  if (isProtectedRoute && !user) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(loginUrl);
+  // Unauthenticated behavior (unchanged where required)
+  if (!user) {
+    if (isAdminArea) {
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("redirect", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    if (isStudentArea) {
+      return NextResponse.redirect(new URL("/temp/login", request.url));
+    }
+
+    return supabaseResponse;
   }
 
-  // Redirect authenticated users away from the login page
-  if (isAuthRoute && user) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+  // Fetch role only when needed for routing decisions
+  const needsRoleDecision =
+    isAdminArea ||
+    isStudentArea ||
+    isAdminLogin ||
+    isStudentLogin ||
+    isStudentSignup;
+
+  let role: AppRole | null = null;
+
+  if (needsRoleDecision) {
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileError || !profile) {
+      // Fail closed on protected areas, fail open on auth pages
+      if (isAdminArea) {
+        return NextResponse.redirect(new URL("/login", request.url));
+      }
+      if (isStudentArea) {
+        return NextResponse.redirect(new URL("/temp/login", request.url));
+      }
+      return supabaseResponse;
+    }
+
+    role = profile.role as AppRole;
   }
 
-  // Redirect unauthenticated users from /temp/dashboard to /temp/login
-  if (isTempProtectedRoute && !user) {
+  if (role === "admin") {
+    // Admin should stay in admin area
+    if (isStudentArea || isStudentLogin || isStudentSignup) {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+    if (isAdminLogin) {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+    return supabaseResponse;
+  }
+
+  if (role === "student") {
+    // Student should stay in temp area
+    if (isAdminArea || isAdminLogin) {
+      return NextResponse.redirect(new URL("/temp/dashboard", request.url));
+    }
+    if (isStudentLogin || isStudentSignup) {
+      return NextResponse.redirect(new URL("/temp/dashboard", request.url));
+    }
+    return supabaseResponse;
+  }
+
+  // Unknown role fallback
+  if (isAdminArea) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+  if (isStudentArea) {
     return NextResponse.redirect(new URL("/temp/login", request.url));
   }
 
@@ -76,13 +126,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths EXCEPT:
-     * - _next/static (static files)
-     * - _next/image (image optimization)
-     * - favicon.ico
-     * - public folder assets
-     */
     "/((?!_next/static|_next/image|favicon.ico|public|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
