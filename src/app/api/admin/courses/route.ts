@@ -59,66 +59,8 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// ----------------------------------------------------------------
-// POST /api/admin/courses
-// Creates a new course.
-// ----------------------------------------------------------------
+
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin(request);
-  if (auth.error) return auth.error;
-
-  try {
-    const supabase = await createClient();
-    const body = await request.json();
-
-    // Accept the camelCase / nested format sent by the frontend
-    const { title, description, level, content, isPublished } = body;
-
-    if (!title?.trim()) {
-      return NextResponse.json(
-        { error: "Course title is required" },
-        { status: 400 },
-      );
-    }
-    if (!level || !["A1", "B1", "B2"].includes(level)) {
-      return NextResponse.json(
-        { error: "Valid level (A1, B1, B2) is required" },
-        { status: 400 },
-      );
-    }
-
-    const { data, error } = await supabase
-      .from("courses")
-      .insert({
-        title: title.trim(),
-        description: description || null,
-        level,
-        content_text: content?.text || null,
-        content_audio_url: content?.audioUrl || null,
-        content_image_url: content?.imageUrl || null,
-        content_video_url: content?.videoUrl || null,
-        is_published: isPublished ?? false,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Error creating course:", error);
-      return NextResponse.json(
-        { error: error.message || "Failed to create course" },
-        { status: 500 },
-      );
-    }
-
-    return NextResponse.json(
-      { success: true, courseId: data.id },
-      { status: 201 },
-    );
-  } catch (error) {
-    console.error("Courses POST error:", error);
-    return NextResponse.json(
-      { error: "Failed to create course" },
-      { status: 500 },
-    );
-  }
+  const auth = await requireAdmin(request); if (auth.error) return auth.error;
+  return NextResponse.json({ error: 'Content authoring is available only in the approved teacher workspace.' }, { status: 403 });
 }

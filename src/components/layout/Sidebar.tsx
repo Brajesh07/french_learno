@@ -12,7 +12,6 @@ import {
   BellIcon,
   ChartBarIcon,
   XMarkIcon,
-  CloudArrowUpIcon,
 } from "@heroicons/react/24/outline";
 import { cn } from "@/lib/utils";
 
@@ -50,9 +49,9 @@ const navigation: NavigationItem[] = [
     icon: PuzzlePieceIcon,
   },
   {
-    name: "Upload Test",
-    href: "/dashboard/upload-test",
-    icon: CloudArrowUpIcon,
+    name: "Teachers",
+    href: "/dashboard/teachers",
+    icon: UsersIcon,
   },
   {
     name: "Notifications",

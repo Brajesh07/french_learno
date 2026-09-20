@@ -1,52 +1,25 @@
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
-/**
- * Verifies the incoming request has a valid Supabase session
- * AND that the authenticated user has the 'admin' role.
- *
- * Returns { userId, error } where error is a NextResponse if auth failed.
- */
-export async function requireAdmin(
-  _request: NextRequest
-): Promise<
-  | { userId: string; error: null }
-  | { userId: null; error: NextResponse }
+export async function requireAdmin(_request?: NextRequest): Promise<
+  { userId: string; error: null } | { userId: null; error: NextResponse }
 > {
-  const supabase = await createClient();
-
-  // getUser() validates the session server-side (no trust of client cookies)
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return {
-      userId: null,
-      error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
-    };
+  void _request;
+  const client = await createClient();
+  const { data: { user }, error } = await client.auth.getUser();
+  if (error || !user) return { userId: null, error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
+  const { data: profile } = await client.from('profiles').select('role, is_active, must_change_password').eq('id', user.id).maybeSingle();
+  if (!profile || profile.role !== 'admin' || !profile.is_active || profile.must_change_password) {
+    return { userId: null, error: NextResponse.json({ error: 'Active admin access required' }, { status: 403 }) };
   }
-
-  // Check role in profiles table
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (profileError || !profile || profile.role !== 'admin') {
-    return {
-      userId: null,
-      error: NextResponse.json(
-        { error: 'Forbidden: admin access required' },
-        { status: 403 }
-      ),
-    };
-  }
-
   return { userId: user.id, error: null };
 }
-
-/**
- * Returns a Supabase admin client (service role).
- * Use this for operations that bypass RLS.
- */
+export async function requireApprovedTeacher() {
+  const client = await createClient();
+  const { data: { user }, error } = await client.auth.getUser();
+  if (error || !user) return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) } as const;
+  const { data: allowed, error: roleError } = await client.rpc('is_approved_teacher');
+  if (roleError || !allowed) return { error: NextResponse.json({ error: 'Approved teacher access required' }, { status: 403 }) } as const;
+  return { error: null, client, userId: user.id } as const;
+}
 export { createAdminClient };

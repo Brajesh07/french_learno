@@ -64,7 +64,6 @@ export default function QuizPreview({ quiz }: QuizPreviewProps) {
             <div className="flex flex-wrap gap-4 mt-3 text-sm text-gray-500 dark:text-gray-400">
               <span>📊 {totalQuestions} questions</span>
               <span>🏆 {totalPoints} points</span>
-              <span>⏰ {quiz.timeLimit} minutes</span>
               <span>✅ {quiz.passingScore}% to pass</span>
             </div>
           </div>

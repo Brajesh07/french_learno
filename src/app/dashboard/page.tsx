@@ -293,22 +293,22 @@ export default function DashboardPage() {
           <div className="mt-5">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <Link
-                href="/dashboard/courses/create"
+                href="/dashboard/teachers"
                 className="relative block w-full border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-lg p-6 text-center hover:border-gray-400 dark:hover:border-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 <BookOpenIcon className="mx-auto h-8 w-8 text-gray-400" />
                 <span className="mt-2 block text-sm font-medium text-gray-900 dark:text-white">
-                  Create Course
+                  Review Teachers
                 </span>
               </Link>
 
               <Link
-                href="/dashboard/quizzes/create"
+                href="/dashboard/quizzes"
                 className="relative block w-full border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-lg p-6 text-center hover:border-gray-400 dark:hover:border-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 <PuzzlePieceIcon className="mx-auto h-8 w-8 text-gray-400" />
                 <span className="mt-2 block text-sm font-medium text-gray-900 dark:text-white">
-                  Create Quiz
+                  View Quizzes
                 </span>
               </Link>
 

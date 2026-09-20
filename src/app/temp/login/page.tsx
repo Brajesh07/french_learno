@@ -55,6 +55,24 @@ export default function TempLoginPage() {
       return;
     }
 
+    // Create profile if missing (e.g. users who signed up before profile API existed)
+    if (data.session?.access_token) {
+      const ensureRes = await fetch("/api/auth/ensure-profile", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${data.session.access_token}` },
+      });
+
+      if (!ensureRes.ok) {
+        const body = await ensureRes.json();
+        setMessage(
+          "Error: " + (body.error || "Could not load your profile. Contact support."),
+        );
+        await supabase.auth.signOut();
+        setLoading(false);
+        return;
+      }
+    }
+
     // Notify admins that this student just logged in (fire-and-forget)
     try {
       await fetch("/api/auth/notify-login", {

@@ -1,131 +1,46 @@
-import { createServerClient } from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
-
-type AppRole = "admin" | "student";
-
+import { createServerClient } from '@supabase/ssr';
+import { NextResponse, type NextRequest } from 'next/server';
+const within = (path: string, base: string) => path === base || path.startsWith(base + '/');
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value),
-          );
-
-          supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options),
-          );
-        },
+  let response = NextResponse.next({ request });
+  const client = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    cookies: {
+      getAll: () => request.cookies.getAll(),
+      setAll: values => {
+        values.forEach(({ name, value }) => request.cookies.set(name, value));
+        response = NextResponse.next({ request });
+        values.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
       },
     },
-  );
-
-  // Keep this directly after createServerClient
-  let user = null;
-  try {
-    const { data } = await supabase.auth.getUser();
-    user = data.user;
-  } catch {
-    return supabaseResponse;
-  }
-
-  const { pathname } = request.nextUrl;
-
-  const isAdminArea = pathname.startsWith("/dashboard");
-  const isStudentArea = pathname.startsWith("/temp/dashboard");
-  const isAdminLogin = pathname.startsWith("/login");
-  const isStudentLogin = pathname.startsWith("/temp/login");
-  const isStudentSignup = pathname.startsWith("/temp/signup");
-
-  // Unauthenticated behavior (unchanged where required)
-  if (!user) {
-    if (isAdminArea) {
-      const loginUrl = new URL("/login", request.url);
-      loginUrl.searchParams.set("redirect", pathname);
-      return NextResponse.redirect(loginUrl);
+  });
+  const bounce = (path: string) => {
+    const next = NextResponse.redirect(new URL(path, request.url));
+    response.cookies.getAll().forEach(cookie => next.cookies.set(cookie));
+    return next;
+  };
+  const path = request.nextUrl.pathname;
+  const admin = within(path, '/dashboard'), teacher = within(path, '/teacher');
+  const student = within(path, '/temp/dashboard'), studentAuth = ['/temp/login', '/temp/signup'].includes(path);
+  const login = path === '/login';
+  if ((admin || teacher || login) && request.headers.get('user-agent')?.includes('FrenchLearnoApp')) return new NextResponse('Not found', { status: 404 });
+  const { data: { user } } = await client.auth.getUser();
+  if (!user) return admin || teacher ? bounce('/login') : student ? bounce('/temp/login') : response;
+  if (!(admin || teacher || student || login || studentAuth)) return response;
+  const { data: profile, error } = await client.from('profiles').select('role, is_active, must_change_password').eq('id', user.id).maybeSingle();
+  if (error || !profile) return admin || teacher ? bounce('/staff/access') : student ? bounce('/temp/login') : response;
+  if (admin || teacher || login) {
+    if (!profile.is_active || profile.must_change_password) return login ? response : bounce('/staff/access');
+    if (admin && profile.role !== 'admin') return bounce('/staff/access');
+    if (teacher && profile.role !== 'teacher') return bounce('/staff/access');
+    if (profile.role === 'teacher') {
+      const { data: application } = await client.from('teacher_profiles').select('verification_status').eq('id', user.id).maybeSingle();
+      const approved = application?.verification_status === 'approved';
+      if (login || (teacher && !approved && path !== '/teacher/pending')) return bounce(approved ? '/teacher/courses' : '/teacher/pending');
     }
-
-    if (isStudentArea) {
-      return NextResponse.redirect(new URL("/temp/login", request.url));
-    }
-
-    return supabaseResponse;
+    if (login && profile.role === 'admin') return bounce('/dashboard');
   }
-
-  // Fetch role only when needed for routing decisions
-  const needsRoleDecision =
-    isAdminArea ||
-    isStudentArea ||
-    isAdminLogin ||
-    isStudentLogin ||
-    isStudentSignup;
-
-  let role: AppRole | null = null;
-
-  if (needsRoleDecision) {
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    if (profileError || !profile) {
-      // Fail closed on protected areas, fail open on auth pages
-      if (isAdminArea) {
-        return NextResponse.redirect(new URL("/login", request.url));
-      }
-      if (isStudentArea) {
-        return NextResponse.redirect(new URL("/temp/login", request.url));
-      }
-      return supabaseResponse;
-    }
-
-    role = profile.role as AppRole;
-  }
-
-  if (role === "admin") {
-    // Admin should stay in admin area
-    if (isStudentArea || isStudentLogin || isStudentSignup) {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
-    }
-    if (isAdminLogin) {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
-    }
-    return supabaseResponse;
-  }
-
-  if (role === "student") {
-    // Student should stay in temp area
-    if (isAdminArea || isAdminLogin) {
-      return NextResponse.redirect(new URL("/temp/dashboard", request.url));
-    }
-    if (isStudentLogin || isStudentSignup) {
-      return NextResponse.redirect(new URL("/temp/dashboard", request.url));
-    }
-    return supabaseResponse;
-  }
-
-  // Unknown role fallback
-  if (isAdminArea) {
-    return NextResponse.redirect(new URL("/login", request.url));
-  }
-  if (isStudentArea) {
-    return NextResponse.redirect(new URL("/temp/login", request.url));
-  }
-
-  return supabaseResponse;
+  if (student && (profile.role !== 'student' || !profile.is_active)) return bounce('/temp/wrong-account');
+  if (studentAuth && profile.role === 'student' && profile.is_active) return bounce('/temp/dashboard');
+  return response;
 }
-
-export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|public|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-  ],
-};
+export const config = { matcher: ['/((?!_next/static|_next/image|favicon.ico|public|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'] };

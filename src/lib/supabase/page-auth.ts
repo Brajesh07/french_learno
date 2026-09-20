@@ -28,18 +28,14 @@ export async function requireStudentPage(
     redirect("/temp/login");
   }
 
-  const selectFields = ["role"];
-  if (options?.includeSubscription) selectFields.push("has_subscription");
-  if (options?.includeName) selectFields.push("name");
-
   const { data: profile } = await supabase
     .from("profiles")
-    .select(selectFields.join(", "))
+    .select("role, name, has_subscription")
     .eq("id", user.id)
     .maybeSingle();
 
   if (!profile || profile.role !== "student") {
-    redirect("/dashboard");
+    redirect("/temp/wrong-account");
   }
 
   return {

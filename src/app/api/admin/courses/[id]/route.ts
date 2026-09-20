@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/supabase/auth-helpers";
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 
 /** Transform a raw snake_case DB course row into the camelCase shape the frontend expects. */
 function transformCourse(row: Record<string, unknown>) {
@@ -116,122 +116,13 @@ export async function GET(
   }
 }
 
-// ----------------------------------------------------------------
-// PATCH /api/admin/courses/:id
-// Partially updates a course.
-// ----------------------------------------------------------------
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const auth = await requireAdmin(request);
-  if (auth.error) return auth.error;
 
-  try {
-    const { id } = await params;
-    const supabase = await createAdminClient();
-    const body = await request.json();
-
-    // Accept the camelCase / nested format sent by the frontend
-    const { title, description, level, content, isPublished } = body;
-
-    const updateData: Record<string, unknown> = {};
-    if (title !== undefined) updateData.title = title.trim();
-    if (description !== undefined) updateData.description = description;
-    if (level !== undefined) updateData.level = level;
-    if (isPublished !== undefined) updateData.is_published = isPublished;
-    if (content !== undefined) {
-      if (content.text !== undefined) updateData.content_text = content.text;
-      if (content.audioUrl !== undefined)
-        updateData.content_audio_url = content.audioUrl;
-      if (content.imageUrl !== undefined)
-        updateData.content_image_url = content.imageUrl;
-      if (content.videoUrl !== undefined)
-        updateData.content_video_url = content.videoUrl;
-    }
-
-    if (Object.keys(updateData).length === 0) {
-      return NextResponse.json(
-        { error: "No valid fields to update" },
-        { status: 400 },
-      );
-    }
-
-    const { data, error } = await supabase
-      .from("courses")
-      .update(updateData)
-      .eq("id", id)
-      .select()
-      .single();
-
-    if (error) {
-      if (error.code === "PGRST116") {
-        return NextResponse.json(
-          { error: "Course not found" },
-          { status: 404 },
-        );
-      }
-      console.error("Error updating course:", error);
-      return NextResponse.json(
-        { error: error.message || "Failed to update course" },
-        { status: 500 },
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      courseId: data.id,
-      data: transformCourse(data as Record<string, unknown>),
-    });
-  } catch (error) {
-    console.error("Course PATCH error:", error);
-    return NextResponse.json(
-      { error: "Failed to update course" },
-      { status: 500 },
-    );
-  }
+export async function PATCH(request: NextRequest) {
+  const auth = await requireAdmin(request); if (auth.error) return auth.error;
+  return NextResponse.json({ error: 'Content authoring is available only in the approved teacher workspace.' }, { status: 403 });
 }
 
-// ----------------------------------------------------------------
-// DELETE /api/admin/courses/:id
-// Deletes a course (cascades to quizzes via FK constraint).
-// ----------------------------------------------------------------
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const auth = await requireAdmin(request);
-  if (auth.error) return auth.error;
-
-  try {
-    const { id } = await params;
-    const supabase = await createClient();
-
-    const { error } = await supabase.from("courses").delete().eq("id", id);
-
-    if (error) {
-      if (error.code === "PGRST116") {
-        return NextResponse.json(
-          { error: "Course not found" },
-          { status: 404 },
-        );
-      }
-      console.error("Error deleting course:", error);
-      return NextResponse.json(
-        { error: "Failed to delete course" },
-        { status: 500 },
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: "Course deleted successfully",
-    });
-  } catch (error) {
-    console.error("Course DELETE error:", error);
-    return NextResponse.json(
-      { error: "Failed to delete course" },
-      { status: 500 },
-    );
-  }
+export async function DELETE(request: NextRequest) {
+  const auth = await requireAdmin(request); if (auth.error) return auth.error;
+  return NextResponse.json({ error: 'Content authoring is available only in the approved teacher workspace.' }, { status: 403 });
 }
