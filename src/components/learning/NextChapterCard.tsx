@@ -18,9 +18,9 @@ export function NextChapterCard({
   onContinue: () => void;
 }) {
   return (
-    <section className="next-chapter-card relative grid min-w-0 gap-6 overflow-hidden rounded-3xl border border-violet-100 bg-[#f1edff] p-5 sm:p-7">
-      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_80px] items-center gap-3 sm:grid-cols-[minmax(0,1fr)_130px] sm:gap-5">
-        <div className="grid min-w-0 gap-4">
+    <section className="next-chapter-card relative flex min-w-0 gap-6 flex-col md:flex-row overflow-hidden rounded-3xl border border-violet-100 bg-[#f1edff] p-5 sm:p-7">
+      <div className="grid w-full items-center gap-3 sm:gap-5">
+        <div className="grid w-full gap-4">
           <span className="text-[10px] font-bold tracking-[.12em] text-violet-700">
             YOUR NEXT CHAPTER
           </span>
@@ -35,30 +35,31 @@ export function NextChapterCard({
             {module.questionCount} questions · {module.proficiency}
           </span>
         </div>
-        <Image
-          src="/learning/learning-mascot.png"
-          alt=""
-          width={240}
-          height={240}
-          className="pointer-events-none h-auto w-full self-center object-contain"
-        />
+        <div className="grid w-full gap-3">
+          <Progress
+            value={total ? (completed / total) * 100 : 0}
+            aria-label="Completed modules"
+          />
+          <span className="text-xs text-slate-600">
+            {completed} of {total} modules completed
+          </span>
+          <button
+            className="primary w-full justify-center sm:w-fit"
+            disabled={disabled}
+            onClick={onContinue}
+          >
+            Continue learning <ArrowRight size={18} />
+          </button>
+        </div>
       </div>
-      <div className="grid min-w-0 gap-3">
-        <Progress
-          value={total ? (completed / total) * 100 : 0}
-          aria-label="Completed modules"
-        />
-        <span className="text-xs text-slate-600">
-          {completed} of {total} modules completed
-        </span>
-        <button
-          className="primary w-full justify-center sm:w-fit"
-          disabled={disabled}
-          onClick={onContinue}
-        >
-          Continue learning <ArrowRight size={18} />
-        </button>
-      </div>
+
+      <Image
+        src="/learning/learning-mascot.png"
+        alt=""
+        width={240}
+        height={240}
+        className="pointer-events-none h-auto w-fit self-center object-contain"
+      />
     </section>
   );
 }
