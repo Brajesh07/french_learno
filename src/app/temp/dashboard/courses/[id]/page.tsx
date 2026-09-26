@@ -56,6 +56,7 @@ export default async function CoursePage({
   const { data: quizzes } = await supabase
     .from("quizzes")
     .select("id, title, description, passing_score")
+    .eq("learning_runtime", "legacy")
     .eq("course_id", id)
     .eq("is_published", true)
     .order("created_at", { ascending: true });

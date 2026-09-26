@@ -1,38 +1,39 @@
-"use client";
-
-import React from "react";
-import { useParams } from "next/navigation";
-import Link from "next/link";
-import QuizCreator from "../../QuizCreator";
-import { Button } from "@/components/ui/Button";
-
-export default function EditQuizPage() {
-  const params = useParams();
-  const quizId = params.id as string;
-
+import { notFound } from "next/navigation";
+import { requireStaffPage } from "@/lib/staff/auth";
+import { isUuid } from "@/lib/gamification/submission";
+import { loadTeacherRevision } from "@/lib/gamification/authoring-server";
+import { RichModuleEditor } from "@/components/teacher/RichModuleEditor";
+import LegacyQuizEdit from "./LegacyQuizEdit";
+export default async function EditQuizPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  if (!isUuid(id)) notFound();
+  const { client, user } = await requireStaffPage("teacher");
+  const { data: quiz, error } = await client
+    .from("quizzes")
+    .select("id")
+    .eq("id", id)
+    .eq("created_by", user.id)
+    .maybeSingle();
+  if (error) throw new Error("Unable to load this module.");
+  if (!quiz) notFound();
+  const initial = await loadTeacherRevision(client, user.id, id);
+  if (!initial) return <LegacyQuizEdit />;
+  const { data: courses, error: ce } = await client
+    .from("courses")
+    .select("id,title,is_published")
+    .eq("created_by", user.id)
+    .order("title");
+  if (ce) throw new Error("Unable to load your courses.");
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-4 mb-6">
-          <Link href="/teacher/quizzes">
-            <Button variant="outline">
-              ← Back to Quizzes
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Edit Quiz
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
-              Update your quiz questions and settings
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Quiz Creator in Edit Mode */}
-      <QuizCreator quizId={quizId} />
-    </div>
+    <RichModuleEditor
+      key={`${initial.revisionId}:${initial.editVersion}`}
+      userId={user.id}
+      courses={courses ?? []}
+      initial={initial}
+    />
   );
 }

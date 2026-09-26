@@ -48,6 +48,7 @@ export async function POST(
     const { data: quiz, error: quizError } = await adminSupabase
       .from("quizzes")
       .select("id, title, passing_score")
+    .eq("learning_runtime", "legacy")
       .eq("id", id)
       .single();
 

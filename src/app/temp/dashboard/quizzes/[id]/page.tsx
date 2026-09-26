@@ -24,6 +24,7 @@ export default async function QuizPage({
   const { data: quiz, error: quizError } = await admin
     .from("quizzes")
     .select("id, title, description, passing_score, course_id")
+    .eq("learning_runtime", "legacy")
     .eq("id", id)
     .eq("is_published", true)
     .single();

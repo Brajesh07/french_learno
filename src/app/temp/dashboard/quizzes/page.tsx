@@ -12,6 +12,7 @@ export default async function QuizzesPage() {
   const { data: quizzes } = await supabase
     .from("quizzes")
     .select("id, title, description, passing_score, course_id")
+    .eq("learning_runtime", "legacy")
     .eq("is_published", true)
     .order("created_at", { ascending: true });
 

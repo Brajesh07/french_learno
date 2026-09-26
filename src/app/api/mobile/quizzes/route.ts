@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
     let quizzesQuery = supabase
       .from('quizzes')
       .select('id, title, description, course_id, passing_score, created_at')
+    .eq('learning_runtime', 'legacy')
       .eq('is_published', true)
       .order('created_at', { ascending: true });
 

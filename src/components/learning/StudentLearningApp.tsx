@@ -1,20 +1,8 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import Image from "next/image";
-import { useLearningProgress } from "@/hooks/useLearningProgress";
-import type { ProgressSnapshot } from "@/lib/learning/progress";
-import { StudentSurface } from "@/components/ui/learning/portal";
-import { LanguageSelection } from "./LanguageSelection";
-import { ProgressSyncNotice } from "./ProgressSyncNotice";
-import { LogoutButton } from "@/app/temp/dashboard/LogoutButton";
-import "./student-learning.css";
+import { useState } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import {
-  Home,
-  Map,
-  Gamepad2,
   Trophy,
-  User,
   ArrowRight,
   Flame,
   Zap,
@@ -22,51 +10,49 @@ import {
   Heart,
   BookOpen,
   Headphones,
-  Sparkles,
+  ChevronRight,
   Lock,
   Check,
-  ChevronRight,
-  Target,
-  Settings,
-  Compass,
 } from "lucide-react";
+import { useLearningProgress } from "@/hooks/useLearningProgress";
+import { useTrustedLearning } from "@/hooks/useTrustedLearning";
+import type { ProgressSnapshot } from "@/lib/learning/progress";
+import type { AvailableModule, SessionMode } from "@/types/gamification";
+import { StudentSurface } from "@/components/ui/learning/portal";
+import { SidebarProvider } from "@/components/ui/learning/sidebar";
 import {
-  SidebarProvider,
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-} from "@/components/ui/learning/sidebar";
-import { Progress } from "@/components/ui/learning/progress";
-import { Onboarding, Lesson, Session } from "@/components/learning/flows";
-import {
-  LearningPath,
-  PlayView,
-  ProfileView,
-  LeaderboardView,
-} from "@/components/learning/views";
-import { questions, units } from "@/lib/learning/content";
-import {
-  Profile,
-  recordAnswer,
-  completeSession,
-  streak,
-  dateKey,
-} from "@/lib/learning/model";
-const nav = [
-  { name: "Home", icon: Home },
-  { name: "Learn", icon: Map },
-  { name: "Play", icon: Gamepad2 },
-  { name: "Leaderboard", icon: Trophy },
-  { name: "Profile", icon: User },
-];
+  StudentSidebar,
+  studentNav as nav,
+  type StudentView,
+} from "./StudentSidebar";
+import { StudentProfile, type StudentAccount } from "./StudentProfile";
+import { NextChapterCard } from "./NextChapterCard";
+import { CourseStartDialog } from "./CourseStartDialog";
+import { CourseMaterialReader } from "./CourseMaterialReader";
+import { LanguageSelection } from "./LanguageSelection";
+import { ProgressSyncNotice } from "./ProgressSyncNotice";
+import { Onboarding } from "./Onboarding";
+import { TrustedLesson } from "./TrustedLesson";
+import { LogoutButton } from "@/app/temp/dashboard/LogoutButton";
+import "./student-learning.css";
 type Props = {
   userId: string;
   learnerName: string;
+  account: StudentAccount | null;
   initialProgress: ProgressSnapshot | null;
   initialError: string | null;
 };
-
+function utcStreak(days: string[]) {
+  const date = new Date();
+  const key = () => date.toISOString().slice(0, 10);
+  if (!days.includes(key())) date.setUTCDate(date.getUTCDate() - 1);
+  let count = 0;
+  while (days.includes(key())) {
+    count++;
+    date.setUTCDate(date.getUTCDate() - 1);
+  }
+  return count;
+}
 export function StudentLearningApp(props: Props) {
   return (
     <StudentSurface>
@@ -76,7 +62,7 @@ export function StudentLearningApp(props: Props) {
         <main className="language-selection">
           <h1>Your journey will be right here.</h1>
           <p role="alert">
-            {props.initialError || "Your progress could not be loaded."}
+            {props.initialError || "Your preferences could not be loaded."}
           </p>
           <button className="primary" onClick={() => window.location.reload()}>
             Try again
@@ -87,183 +73,197 @@ export function StudentLearningApp(props: Props) {
     </StudentSurface>
   );
 }
-
 function LearningDashboard({
   userId,
   learnerName,
+  account,
   initialProgress,
 }: Omit<Props, "initialError"> & { initialProgress: ProgressSnapshot }) {
   const router = useRouter();
+  // Legacy snapshot is preferences only. No gamification reads or writes here.
   const { state, setState, progress, status, error, selectFrench, flush } =
     useLearningProgress(userId, initialProgress);
-  const [active, setActive] = useState("Home");
-  const [onboarding, setOnboarding] = useState(false),
-    [session, setSession] = useState<Session | null>(null);
-  const [ready, setReady] = useState(false);
-  useEffect(() => setReady(true), []);
-  const pending = useRef<{ mode: Session["mode"]; unit?: number } | null>(null);
-  const stateRef = useRef(state);
-  stateRef.current = state;
-  const canPractice = ready && (status === "saved" || status === "saving");
-  const languageReady = !!progress.selectedLanguage && progress.revision > 0;
-  async function leave(href: string) {
-    try {
-      await flush();
-      router.push(href);
-    } catch {
-      /* The sync notice offers retry without dropping work. */
-    }
+  const learning = useTrustedLearning(userId);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const active =
+    nav.find((item) => item.name.toLowerCase() === searchParams.get("view"))
+      ?.name ?? "Home";
+  const [onboarding, setOnboarding] = useState(false);
+  const [courseChoice, setCourseChoice] = useState<AvailableModule | null>(
+    null,
+  );
+  const [reader, setReader] = useState<AvailableModule | null>(null);
+  const [startError, setStartError] = useState("");
+  function setActive(view: StudentView) {
+    setReader(null);
+    const query = new URLSearchParams(searchParams.toString());
+    query.set("view", view.toLowerCase());
+    router.replace(`${pathname}?${query}`, { scroll: false });
   }
-  const today = dateKey(),
-    nextUnit = units.find((u) => !state.completed.includes(u.id))?.id || 4,
-    minutes = Math.floor((state.seconds[today] || 0) / 60),
-    goal = state.profile?.goal || 10;
-  function begin(mode: Session["mode"], unit = nextUnit) {
-    if (!canPractice || !languageReady) return;
-    if (!stateRef.current.profile) {
-      pending.current = { mode, unit };
-      setOnboarding(true);
-      return;
-    }
-    const current = stateRef.current;
-    const unlocked = questions.filter(
-      (q) => q.level === 1 || current.completed.includes(q.level - 1),
-    );
-    if (
-      mode === "lesson" &&
-      unit !== 1 &&
-      !current.completed.includes(unit - 1)
-    )
-      return;
-    let selected =
-      mode === "lesson"
-        ? questions.filter((q) => q.level === unit)
-        : mode === "listening"
-          ? unlocked.filter((q) => q.type === "listening")
-          : mode === "words"
-            ? unlocked.filter(
-                (q) => q.type !== "listening" && q.type !== "sentence_builder",
-              )
-            : mode === "review"
-              ? unlocked.filter((q) =>
-                  current.mistakes.some((m) => m.id === q.id && m.due <= today),
-                )
-              : unlocked;
-    if (mode === "daily") {
-      const seed = Number(today.replaceAll("-", ""));
-      selected = [...selected].sort((a, b) => {
-        const due = (id: string) =>
-          current.mistakes.some((m) => m.id === id && m.due <= today) ? 0 : 1;
-        return (
-          due(a.id) - due(b.id) ||
-          ((Number(a.id.slice(-3)) * 13 + seed) % 23) -
-            ((Number(b.id.slice(-3)) * 13 + seed) % 23)
-        );
-      });
-    }
-    if (!selected.length) selected = unlocked.slice(0, 5);
-    setSession({
-      key: Date.now(),
-      questions: selected.slice(0, 5),
-      mode,
-      unit: mode === "lesson" ? unit : 0,
-    });
+  const name = state.profile?.name || learnerName;
+  const { catalogue, session } = learning;
+  const modules = catalogue?.modules ?? [],
+    available = modules.filter((m) => !m.locked);
+  const next = available.find((m) => !m.completed) ?? available[0];
+  const canPractice =
+    (status === "saved" || status === "saving") &&
+    !learning.busy &&
+    !learning.loading;
+  const due = available.reduce((n, m) => n + m.dueReviews, 0);
+  const complete = modules.filter((m) => m.completed).length;
+  function begin(mode: SessionMode, moduleId = next?.id) {
+    if (!canPractice || !moduleId) return;
+    if (mode === "lesson") {
+      const selectedModule = available.find((item) => item.id === moduleId);
+      if (selectedModule) {
+        setStartError("");
+        setCourseChoice(selectedModule);
+      }
+    } else void learning.open(moduleId, mode);
   }
-  function saveProfile(profile: Profile) {
-    setState((s) => ({ ...s, profile }));
-    stateRef.current = { ...stateRef.current, profile };
-    setOnboarding(false);
-    if (pending.current) {
-      const p = pending.current;
-      pending.current = null;
-      begin(p.mode, p.unit);
-    }
+  async function startExercises(moduleId: string) {
+    if (!canPractice) return;
+    setStartError("");
+    const started = await learning.open(moduleId, "lesson");
+    if (started) {
+      setCourseChoice(null);
+      setReader(null);
+    } else
+      setStartError(
+        "The exercises could not start. Please try again; your progress is safe.",
+      );
   }
-
-  if (!ready)
-    return (
-      <main className="language-selection" aria-busy="true">
-        <h1>Loading your French journey…</h1>
-        <p>Your account progress is ready. Preparing your dashboard.</p>
-      </main>
-    );
-  if (!languageReady)
+  if (!progress.selectedLanguage || progress.revision === 0)
     return (
       <>
         <LanguageSelection
-          name={learnerName}
+          name={name}
           saving={status === "saving"}
-          onSelect={() => {
-            void selectFrench().catch(() => {});
-          }}
+          onSelect={() => void selectFrench().catch(() => {})}
         />
         <ProgressSyncNotice status={status} error={error} retry={flush} />
       </>
     );
-
+  const stats = catalogue
+    ? [
+        {
+          icon: Flame,
+          value: utcStreak(catalogue.days),
+          label: "day streak · UTC",
+          color: "orange",
+        },
+        {
+          icon: Zap,
+          value: catalogue.totals.xp,
+          label: "total XP",
+          color: "violet",
+        },
+        {
+          icon: Coins,
+          value: catalogue.totals.coins,
+          label: "coins earned",
+          color: "gold",
+        },
+        {
+          icon: Heart,
+          value: `${catalogue.totals.hearts} / 5`,
+          label: "hearts",
+          color: "pink",
+        },
+      ]
+    : [];
+  const moduleList = (
+    <div className="unit-list">
+      {modules.map((m, i) => (
+        <section key={m.id} className={`unit-card ${m.locked ? "locked" : ""}`}>
+          <span className="unit-number">
+            {m.locked ? <Lock /> : m.completed ? <Check /> : i + 1}
+          </span>
+          <div>
+            <span className="eyebrow">
+              {m.courseTitle} · {m.proficiency}
+            </span>
+            <h2>{m.title}</h2>
+            <p>{m.objective}</p>
+            <small>
+              {m.questionCount} questions ·{" "}
+              {m.accessTier === "premium" ? "Premium" : "Free"}
+              {m.completed ? " · Completed" : ""}
+            </small>
+          </div>
+          <button
+            className="primary"
+            disabled={!canPractice || m.locked}
+            onClick={() => begin("lesson", m.id)}
+          >
+            {m.locked
+              ? "Subscription required"
+              : m.completed
+                ? "Practise again"
+                : "Start lesson"}
+            <ArrowRight size={17} />
+          </button>
+        </section>
+      ))}
+    </div>
+  );
+  const practice = (
+    <div className="play-grid">
+      {[
+        {
+          mode: "review" as const,
+          title: "Gentle review",
+          copy: `${due} questions due across your lessons. Correct answers restore hearts.`,
+          icon: Heart,
+          module: available.find((m) => m.dueReviews > 0) ?? next,
+        },
+        {
+          mode: "words" as const,
+          title: "Word practice",
+          copy: "Recall useful French words and choose their meanings.",
+          icon: BookOpen,
+          module: available.find((m) =>
+            m.types.some(
+              (t) => t === "typed_recall" || t === "multiple_choice",
+            ),
+          ),
+        },
+        {
+          mode: "listening" as const,
+          title: "Tune your ear",
+          copy: "Listen to French, then choose what you heard.",
+          icon: Headphones,
+          module: available.find((m) => m.types.includes("listening_choice")),
+        },
+        {
+          mode: "daily" as const,
+          title: "Daily challenge",
+          copy: "Complete a session for your daily bonus. Rewards reset at midnight UTC.",
+          icon: Trophy,
+          module: next,
+        },
+      ].map(({ mode, title, copy, icon: Icon, module }) => (
+        <section className="play-card" key={mode}>
+          <Icon size={26} />
+          <h2>{title}</h2>
+          <p>{copy}</p>
+          <button
+            className="primary"
+            disabled={!canPractice || !module}
+            onClick={() => begin(mode, module?.id)}
+          >
+            Let’s practise <ArrowRight size={16} />
+          </button>
+        </section>
+      ))}
+    </div>
+  );
   return (
     <SidebarProvider
       style={{ "--lla-sidebar-width": "232px" } as React.CSSProperties}
     >
-      <Sidebar className="app-sidebar">
-        <SidebarHeader>
-          <button className="brand" onClick={() => setActive("Home")}>
-            <span className="brand-mark">
-              ll<span>a</span>
-            </span>
-            <span className="brand-caption">a little, every day.</span>
-          </button>
-        </SidebarHeader>
-        <SidebarContent>
-          <span className="nav-caption">YOUR LEARNING SPACE</span>
-          <nav>
-            {nav.map(({ name, icon: Icon }) => (
-              <button
-                key={name}
-                onClick={() => setActive(name)}
-                className={`nav-item ${active === name ? "active" : ""}`}
-              >
-                <Icon size={21} />
-                {name}
-                {name === "Learn" && <span className="new-dot" />}
-              </button>
-            ))}
-          </nav>
-          <div className="existing-student-links">
-            <span className="nav-caption">YOUR COURSE LIBRARY</span>
-            <button onClick={() => void leave("/temp/dashboard/courses")}>
-              Published courses
-            </button>
-            <button onClick={() => void leave("/temp/dashboard/quizzes")}>
-              Course quizzes
-            </button>
-            <button onClick={() => void leave("/temp/dashboard/profile")}>
-              Account settings
-            </button>
-          </div>
-          <div className="side-note">
-            <Compass size={29} />
-            <strong>
-              Small steps.
-              <br />
-              Whole new worlds.
-            </strong>
-            <p>Your next adventure starts with a word.</p>
-          </div>
-        </SidebarContent>
-        <SidebarFooter>
-          <button className="profile-link" onClick={() => setActive("Profile")}>
-            <span className="avatar">
-              {(state.profile?.name || learnerName)[0]?.toUpperCase() || "Y"}
-            </span>
-            <span>
-              <strong>{state.profile?.name || learnerName}</strong>
-              <small>French explorer</small>
-            </span>
-            <Settings size={18} />
-          </button>
-        </SidebarFooter>
-      </Sidebar>
+      <StudentSidebar active={active} onNavigate={setActive} />
       <div
         className={`app-shell ${state.profile?.largeText ? "large-text" : ""}`}
       >
@@ -274,13 +274,27 @@ function LearningDashboard({
           </div>
           <div className="top-tools">
             <span className="language-chip">
-              <span className="flag" aria-hidden="true">🇫🇷</span>
+              <span className="flag" aria-hidden>
+                🇫🇷
+              </span>
               <span>French</span>
-              <span className="language-level">A1</span>
+              <span className="language-level">
+                {account?.frenchLevel || next?.proficiency || "A1"}
+              </span>
             </span>
             <span className="sync-status" role="status" data-state={status}>
-              <span className="sync-dot" aria-hidden="true" />
-              <span>{status === "saved" ? "Saved" : status === "saving" ? "Saving…" : "Not saved"}</span>
+              <span className="sync-dot" aria-hidden />
+              <span>
+                {learning.loading
+                  ? "Loading…"
+                  : learning.error
+                    ? "Needs attention"
+                    : status === "saved"
+                      ? "Saved"
+                      : status === "saving"
+                        ? "Saving…"
+                        : "Not saved"}
+              </span>
             </span>
             <div className="topbar-account">
               <button
@@ -288,22 +302,70 @@ function LearningDashboard({
                 className="avatar small"
                 onClick={() => setActive("Profile")}
               >
-                {(state.profile?.name || learnerName)[0]?.toUpperCase() || "Y"}
+                {name[0]?.toUpperCase()}
               </button>
               <LogoutButton compact disabled={status !== "saved"} />
             </div>
           </div>
         </header>
         <main className="dashboard">
-          {active === "Home" && (
+          {learning.error && (
+            <div className="storage-warning" role="alert">
+              {learning.error}
+              <button
+                className="plain-button"
+                disabled={learning.busy || learning.loading}
+                onClick={() =>
+                  void (learning.hasPendingStart
+                    ? learning.retryStart()
+                    : learning.refresh())
+                }
+              >
+                Try again
+              </button>
+            </div>
+          )}
+          {learning.loading && !catalogue && (
+            <p role="status">Loading your lessons and saved progress…</p>
+          )}
+          {!reader &&
+            ["Home", "Learn", "Play"].includes(active) &&
+            catalogue &&
+            modules.length === 0 && (
+              <section className="leaderboard-empty">
+                <BookOpen size={38} />
+                <h2>Your next chapter is on its way.</h2>
+                <p>
+                  Your teachers are preparing interactive French lessons.
+                  Published lessons will appear here.
+                </p>
+                <button
+                  className="primary"
+                  onClick={() => void learning.refresh()}
+                >
+                  Check for lessons
+                </button>
+              </section>
+            )}
+          {reader && (
+            <CourseMaterialReader
+              key={reader.id}
+              userId={userId}
+              moduleId={reader.id}
+              disabled={!canPractice}
+              onBack={() => setActive("Learn")}
+              onStart={() => void startExercises(reader.id)}
+            />
+          )}
+          {!reader && active === "Home" && (
             <>
               <section className="greeting">
                 <div>
                   <div className="eyebrow">LET’S MAKE A LITTLE PROGRESS</div>
                   <h1>
-                    Bonjour, {state.profile?.name || learnerName} <span>✦</span>
+                    Bonjour, {name} <span>✦</span>
                   </h1>
-                  <p>A new day. A few new words. A world of possibilities.</p>
+                  <p>A few new words. A world of possibilities.</p>
                 </div>
                 <div className="date-label">
                   YOUR FRENCH ADVENTURE
@@ -312,32 +374,7 @@ function LearningDashboard({
                 </div>
               </section>
               <div className="stats-row">
-                {[
-                  {
-                    icon: Flame,
-                    value: String(streak(state.days)),
-                    label: "day streak",
-                    color: "orange",
-                  },
-                  {
-                    icon: Zap,
-                    value: String(state.xp),
-                    label: "total XP",
-                    color: "violet",
-                  },
-                  {
-                    icon: Coins,
-                    value: String(state.coins),
-                    label: "coins earned",
-                    color: "gold",
-                  },
-                  {
-                    icon: Heart,
-                    value: `${state.hearts} / 5`,
-                    label: "hearts",
-                    color: "pink",
-                  },
-                ].map(({ icon: Icon, value, label, color }) => (
+                {stats.map(({ icon: Icon, value, label, color }) => (
                   <div className="stat" key={label}>
                     <span className={`stat-icon ${color}`}>
                       <Icon size={23} />
@@ -349,284 +386,141 @@ function LearningDashboard({
                   </div>
                 ))}
               </div>
-              <div className="dashboard-grid">
-                <div className="main-column">
-                  <section className="continue-card">
-                    <div className="lesson-content">
-                      <span className="pill">
-                        {state.completed.length
-                          ? "YOUR NEXT CHAPTER"
-                          : "YOUR FIRST CHAPTER"}
-                      </span>
-                      <h2>
-                        {state.completed.length
-                          ? "Your next adventure?"
-                          : "Big adventures start"}
-                        <br />
-                        {state.completed.length
-                          ? units[nextUnit - 1].title
-                          : "with “bonjour”."}
-                      </h2>
-                      <p>Meet new words. Make your first connections.</p>
-                      <div className="lesson-meta">
-                        <span>
-                          <BookOpen size={15} /> Unit {nextUnit} ·{" "}
-                          {units[nextUnit - 1].title}
-                        </span>
-                        <span>5 min</span>
-                      </div>
-                      <Progress
-                        value={(state.completed.length / 4) * 100}
-                        aria-label="Learning path progress"
-                        className="lesson-progress"
-                      />
-                      <button
-                        className="primary"
-                        disabled={!ready}
-                        onClick={() => begin("lesson")}
-                      >
-                        {state.profile
-                          ? "Continue learning"
-                          : "Start my journey"}{" "}
-                        <ArrowRight size={18} />
-                      </button>
-                    </div>
-                    <Image
-                      className="mascot-image"
-                      sizes="(max-width: 767px) 140px, 240px"
-                      src="/learning/learning-mascot.png"
-                      alt="A cheerful little orange explorer holding a blue journal"
-                      width={270}
-                      height={270}
+              {catalogue && catalogue.activeSessions.length > 0 && (
+                <section className="resume-panel">
+                  <div>
+                    <strong>Pick up where you left off</strong>
+                    <p>Your previous answers are already saved.</p>
+                  </div>
+                  <button
+                    className="secondary"
+                    disabled={!canPractice}
+                    onClick={() =>
+                      void learning.open(
+                        undefined,
+                        "lesson",
+                        catalogue.activeSessions[0].id,
+                      )
+                    }
+                  >
+                    Resume session <ArrowRight size={16} />
+                  </button>
+                </section>
+              )}
+              {next && (
+                <div className="dashboard-grid">
+                  <div className="main-column">
+                    <NextChapterCard
+                      module={next}
+                      completed={complete}
+                      total={modules.length}
+                      disabled={!canPractice}
+                      onContinue={() => begin("lesson")}
                     />
-                  </section>
-                  <section className="journey-section">
-                    <div className="section-heading">
-                      <h2>Your learning journey</h2>
-                      <button
-                        className="text-button"
-                        onClick={() => setActive("Learn")}
-                      >
-                        View path <ArrowRight size={16} />
-                      </button>
-                    </div>
-                    <p className="section-subtitle">
-                      Every little step brings you closer.
-                    </p>
-                    <div className="journey-track">
-                      {[
-                        {
-                          title: "First words",
-                          icon: BookOpen,
-                          n: "01",
-                          open: true,
-                        },
-                        {
-                          title: "About you",
-                          icon: User,
-                          n: "02",
-                          open: state.completed.includes(1),
-                        },
-                        {
-                          title: "At the café",
-                          icon: Headphones,
-                          n: "03",
-                          open: state.completed.includes(2),
-                        },
-                        {
-                          title: "Out & about",
-                          icon: Compass,
-                          n: "04",
-                          open: state.completed.includes(3),
-                        },
-                      ].map(({ title, icon: Icon, n, open }) => (
+                    <section className="trusted-path">
+                      <div className="section-heading">
+                        <h2>Your learning path</h2>
                         <button
-                          className={`journey-stop ${open ? "current" : ""}`}
-                          key={n}
-                          disabled={!open}
-                          onClick={() => begin("lesson", Number(n))}
+                          className="text-button"
+                          onClick={() => setActive("Learn")}
                         >
-                          <span className="journey-node">
-                            {open ? <Icon size={27} /> : <Lock size={22} />}
-                          </span>
-                          <small>UNIT {n}</small>
-                          <strong>{title}</strong>
-                          <span className="node-status">
-                            {state.completed.includes(Number(n))
-                              ? "Complete"
-                              : open
-                                ? "Let’s begin"
-                                : "Locked"}
-                          </span>
+                          View all
                         </button>
-                      ))}
-                    </div>
-                  </section>
-                  <section>
-                    <div className="section-heading">
-                      <h2>A little extra practice</h2>
-                      <span className="muted">Find your flow</span>
-                    </div>
-                    <div className="practice-grid">
+                      </div>
+                      {moduleList}
+                    </section>
+                  </div>
+                  <aside className="right-column">
+                    <section className="panel">
+                      <span className="eyebrow">A LITTLE, EVERY DAY</span>
+                      <h3>
+                        {catalogue?.completedSessions ?? 0} sessions completed
+                      </h3>
+                      <p className="small-copy">
+                        Every completed session counts towards your streak. Your
+                        saved progress follows you between devices.
+                      </p>
+                    </section>
+                    <section className="challenge-card">
+                      <span className="eyebrow">KEEP YOUR FRENCH FRESH</span>
+                      <h3>Gentle review</h3>
+                      <p>
+                        {due
+                          ? `${due} questions are ready for another look.`
+                          : "Revisit a lesson and build your confidence."}{" "}
+                        Correct answers restore hearts.
+                      </p>
                       <button
-                        className="practice-card"
-                        onClick={() => begin("words")}
+                        className="secondary"
+                        disabled={!canPractice}
+                        onClick={() =>
+                          begin(
+                            "review",
+                            (available.find((m) => m.dueReviews > 0) ?? next)
+                              .id,
+                          )
+                        }
                       >
-                        <span className="practice-icon violet">
-                          <BookOpen />
-                        </span>
-                        <strong>Word play</strong>
-                        <p>Small words, big discoveries.</p>
-                        <span className="card-link">
-                          Build your vocabulary <ArrowRight size={16} />
-                        </span>
+                        Start review <Heart size={16} />
                       </button>
-                      <button
-                        className="practice-card"
-                        onClick={() => begin("listening")}
-                      >
-                        <span className="practice-icon peach">
-                          <Headphones />
-                        </span>
-                        <strong>Listen & learn</strong>
-                        <p>Tune your ear to French.</p>
-                        <span className="card-link">
-                          Try listening practice <ArrowRight size={16} />
-                        </span>
-                      </button>
-                    </div>
-                  </section>
+                    </section>
+                  </aside>
                 </div>
-                <aside className="right-column">
-                  <section className="daily-goal panel">
-                    <div className="section-heading">
-                      <h3>Your daily goal</h3>
-                      <Target size={20} />
-                    </div>
-                    <div
-                      className="goal-ring"
-                      style={{
-                        background: `conic-gradient(#b5a5ed ${Math.min(100, (minutes / goal) * 100)}%, #fff 0)`,
-                      }}
-                    >
-                      <span>
-                        <strong>
-                          {minutes}
-                          <span>/{goal}</span>
-                        </strong>
-                        <small>minutes today</small>
-                      </span>
-                    </div>
-                    <p>A little focus goes a long way.</p>
-                    <div className="week-row">
-                      {Array.from({ length: 7 }, (_, i) => {
-                        const day = new Date();
-                        day.setDate(
-                          day.getDate() - ((day.getDay() + 6) % 7) + i,
-                        );
-                        const key = dateKey(day);
-                        return (
-                          <span key={key}>
-                            <small>
-                              {day.toLocaleDateString("en", {
-                                weekday: "narrow",
-                              })}
-                            </small>
-                            <span className="week-day">
-                              {state.days.includes(key) ? (
-                                <Check size={12} />
-                              ) : key === today ? (
-                                <span className="today-dot" />
-                              ) : (
-                                "·"
-                              )}
-                            </span>
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </section>
-                  <section className="challenge-card">
-                    <div className="challenge-heading">
-                      <span className="challenge-icon">
-                        <Zap size={23} />
-                      </span>
-                      <span className="mini-pill">DAILY CHALLENGE</span>
-                    </div>
-                    <h3>Make today count.</h3>
-                    <p>
-                      Five quick questions.
-                      <br />
-                      One satisfying little win.
-                    </p>
-                    <span className="reward">✦ +50 bonus XP</span>
-                    <button
-                      className="secondary"
-                      onClick={() => begin("daily")}
-                    >
-                      {state.daily.includes(today)
-                        ? "Practise again"
-                        : "Take the challenge"}{" "}
-                      <ArrowRight size={16} />
-                    </button>
-                  </section>
-                  <section className="tip-card">
-                    <span className="eyebrow">
-                      <Sparkles size={15} /> A LITTLE FRENCH CULTURE
-                    </span>
-                    <h3>Start with “bonjour”.</h3>
-                    <p>
-                      When entering a shop in France, a friendly “bonjour” is a
-                      lovely way to greet the person serving you.
-                    </p>
-                    <span className="tip-footer">
-                      Little words. Meaningful connections.
-                    </span>
-                  </section>
-                </aside>
-              </div>
-              <div className="mobile-library-links">
-                <button onClick={() => void leave("/temp/dashboard/courses")}>
-                  Courses
-                </button>
-                <button onClick={() => void leave("/temp/dashboard/quizzes")}>
-                  Quizzes
-                </button>
-                <button onClick={() => void leave("/temp/dashboard/profile")}>
-                  Account settings
-                </button>
-              </div>
+              )}
+              {!next && modules.length > 0 && moduleList}
               <footer className="page-footer">
-                Made for your own pace.{" "}
+                Made for your own pace.
                 <span>Every word is a step forward.</span>
               </footer>
             </>
           )}
-          {active === "Learn" && <LearningPath state={state} start={begin} />}{" "}
-          {active === "Play" && <PlayView state={state} start={begin} />}{" "}
-          {active === "Profile" && (
-            <ProfileView
-              state={state}
-              edit={() => {
-                pending.current = null;
-                setOnboarding(true);
-              }}
-              toggleText={() =>
-                setState((s) =>
-                  s.profile
-                    ? {
-                        ...s,
-                        profile: {
-                          ...s.profile,
-                          largeText: !s.profile.largeText,
-                        },
-                      }
-                    : s,
-                )
+          {!reader && active === "Learn" && (
+            <section className="view-page">
+              <span className="eyebrow">YOUR FRENCH JOURNEY</span>
+              <h1>One chapter at a time.</h1>
+              <p>Explore lessons published by your teachers.</p>
+              {moduleList}
+            </section>
+          )}
+          {!reader && active === "Play" && (
+            <section className="view-page">
+              <span className="eyebrow">PRACTICE THAT FEELS LIKE PLAY</span>
+              <h1>A little practice goes a long way.</h1>
+              <p>Choose your next challenge.</p>
+              {practice}
+            </section>
+          )}
+          {!reader && active === "Profile" && (
+            <StudentProfile
+              name={name}
+              account={account}
+              focus={state.profile?.focus || "Everyday French"}
+              stats={stats}
+              largeText={!!state.profile?.largeText}
+              onEdit={() => setOnboarding(true)}
+              onToggleText={() =>
+                state.profile
+                  ? setState((s) => ({
+                      ...s,
+                      profile: s.profile && {
+                        ...s.profile,
+                        largeText: !s.profile.largeText,
+                      },
+                    }))
+                  : setOnboarding(true)
               }
             />
-          )}{" "}
-          {active === "Leaderboard" && <LeaderboardView state={state} />}
+          )}
+          {!reader && active === "Leaderboard" && (
+            <section className="leaderboard-empty">
+              <Trophy size={40} />
+              <h2>Your own progress comes first.</h2>
+              <p>
+                Shared leaderboards are coming later. You’ve earned{" "}
+                {catalogue?.totals.xp ?? "…"} XP so far.
+              </p>
+            </section>
+          )}
         </main>
         <nav className="mobile-nav">
           {nav.map(({ name, icon: Icon }) => (
@@ -641,38 +535,41 @@ function LearningDashboard({
           ))}
         </nav>
       </div>
+      {courseChoice && !session && (
+        <CourseStartDialog
+          title={courseChoice.title}
+          busy={learning.busy}
+          canStart={canPractice}
+          error={learning.error || startError}
+          onClose={() => setCourseChoice(null)}
+          onRead={() => {
+            setActive("Learn");
+            setReader(courseChoice);
+            setCourseChoice(null);
+          }}
+          onSkip={() => void startExercises(courseChoice.id)}
+        />
+      )}
       {onboarding && (
         <Onboarding
           learnerName={learnerName}
           profile={state.profile}
-          onClose={() => {
+          onClose={() => setOnboarding(false)}
+          onSave={(profile) => {
+            setState((s) => ({ ...s, profile }));
             setOnboarding(false);
-            pending.current = null;
           }}
-          onSave={saveProfile}
         />
-      )}{" "}
+      )}
       {session && (
-        <Lesson
-          key={session.key}
+        <TrustedLesson
+          key={`${session.id}:${session.receipts.length}`}
           session={session}
-          hearts={state.hearts}
-          onClose={() => setSession(null)}
-          onAnswer={(q, correct, review) =>
-            setState((s) => recordAnswer(s, q.id, correct, q.xpReward, review))
-          }
-          onComplete={(correct, total, seconds) =>
-            setState((s) =>
-              completeSession(
-                s,
-                session.unit,
-                session.mode,
-                correct,
-                total,
-                seconds,
-              ),
-            )
-          }
+          userId={userId}
+          hearts={catalogue?.totals.hearts ?? session.totals.hearts}
+          onConfirm={learning.confirm}
+          onClose={learning.close}
+          onResume={() => void learning.open(undefined, "lesson", session.id)}
         />
       )}
       <ProgressSyncNotice status={status} error={error} retry={flush} />

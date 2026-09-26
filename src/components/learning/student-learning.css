@@ -115,3 +115,9 @@
   .lla-student .topbar-account { padding-left: 8px; gap: 2px; }
   .lla-student .topbar .sync-status { gap: 4px; font-size: 10px; }
 }
+/* Trusted lesson delivery and resumable sessions. */
+.lla-student .resume-panel{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:20px 24px;margin-bottom:24px;background:#f1edff;border:1px solid #ded5f7;border-radius:16px}
+.lla-student .resume-panel p{font-size:13px;color:#746e83;margin-top:6px}
+.lla-student .trusted-path{margin-top:28px}.lla-student .trusted-path .unit-card{padding:20px;gap:16px;flex-wrap:wrap}.lla-student .trusted-path .unit-card h2{font-size:19px}.lla-student .trusted-path .unit-card>div{flex:1;min-width:150px}.lla-student .trusted-path .unit-card .unit-number{width:45px;height:45px;border-radius:14px}.lla-student .trusted-path .unit-card button{margin-left:61px}
+.lla-student .exercise-image{max-height:240px;max-width:100%;object-fit:contain;border-radius:12px}.lla-student .audio-section audio{max-width:100%}.lla-student .hint-button{display:inline-flex;gap:6px;align-items:center}
+@media(max-width:767px){.lla-student .resume-panel{align-items:flex-start;flex-direction:column}.lla-student .trusted-path .unit-card button{margin-left:0}.lla-student .continue-card h2{font-size:26px;overflow-wrap:anywhere}}
