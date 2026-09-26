@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import Link from "next/link";
+import { StudentAssignment } from "@/components/staff/StudentAssignment";
 import { Button } from "@/components/ui/Button";
 
 interface StudentDetails {
@@ -156,6 +157,7 @@ const StudentPage: React.FC<StudentPageProps> = ({ params }) => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Profile Card */}
         <div className="lg:col-span-2 space-y-6">
+          <StudentAssignment studentId={student.uid} />
           <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">

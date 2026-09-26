@@ -1,0 +1,21 @@
+import * as React from "react"
+
+import { cn } from "@/lib/utils"
+
+function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+  return (
+    <input
+      type={type}
+      data-slot="input"
+      className={cn(
+        "h-9 w-full min-w-0 rounded-md border border-[var(--lla-input)] bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none selection:bg-[var(--lla-primary)] selection:text-[var(--lla-primary-foreground)] file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-[var(--lla-foreground)] placeholder:text-[var(--lla-muted-foreground)] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-[var(--lla-input)]/30",
+        "focus-visible:border-[var(--lla-ring)] focus-visible:ring-[3px] focus-visible:ring-[var(--lla-ring)]/50",
+        "aria-invalid:border-[var(--lla-destructive)] aria-invalid:ring-[var(--lla-destructive)]/20 dark:aria-invalid:ring-[var(--lla-destructive)]/40",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+export { Input }

@@ -1,26 +1,18 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { requireStudentPage } from "@/lib/supabase/page-auth";
 
 export default async function QuizzesPage() {
+  const { profile } = await requireStudentPage({ includeSubscription: true });
+
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/temp/login");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("has_subscription")
-    .eq("id", user.id)
-    .maybeSingle();
 
   const isSubscribed = profile?.has_subscription ?? false;
 
   const { data: quizzes } = await supabase
     .from("quizzes")
     .select("id, title, description, passing_score, course_id")
+    .eq("learning_runtime", "legacy")
     .eq("is_published", true)
     .order("created_at", { ascending: true });
 

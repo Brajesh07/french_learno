@@ -19,6 +19,7 @@ export async function GET(
     const { data: quiz, error: quizError } = await supabase
       .from('quizzes')
       .select('id, title, description, course_id, passing_score')
+    .eq('learning_runtime', 'legacy')
       .eq('id', id)
       .eq('is_published', true)
       .single();

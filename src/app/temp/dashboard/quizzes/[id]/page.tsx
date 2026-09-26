@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
+import { requireStudentPage } from "@/lib/supabase/page-auth";
 import QuizForm from "./QuizForm";
 
 export default async function QuizPage({
@@ -10,30 +11,20 @@ export default async function QuizPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-  const admin = await createAdminClient();
 
-  // Auth guard
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/temp/login");
-
-  // Check subscription (using user client)
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("has_subscription")
-    .eq("id", user.id)
-    .maybeSingle();
+  // Auth + role guard
+  const { profile } = await requireStudentPage({ includeSubscription: true });
 
   if (!profile?.has_subscription) {
     console.log("Redirecting: user has no subscription");
     redirect("/temp/dashboard");
   }
 
-  // Fetch quiz (using admin client to ensure we see it if published)
-  const { data: quiz, error: quizError } = await admin
+  // Cookie client enforces current teacher assignment through RLS.
+  const { data: quiz, error: quizError } = await supabase
     .from("quizzes")
     .select("id, title, description, passing_score, course_id")
+    .eq("learning_runtime", "legacy")
     .eq("id", id)
     .eq("is_published", true)
     .single();
@@ -43,8 +34,8 @@ export default async function QuizPage({
     redirect("/temp/dashboard");
   }
 
-  // Fetch questions (using admin client)
-  const { data: questions, error: questionsError } = await admin
+  // Fetch only questions allowed by the student's cookie session and RLS.
+  const { data: questions, error: questionsError } = await supabase
     .from("quiz_questions")
     .select("id, question, type, points")
     .eq("quiz_id", id)
@@ -68,9 +59,9 @@ export default async function QuizPage({
     );
   }
 
-  // Fetch answer options (without is_correct) using admin client
+  // Fetch answer options without exposing the grading flag.
   const questionIds = questions.map((q) => q.id);
-  const { data: answers } = await admin
+  const { data: answers } = await supabase
     .from("quiz_answers")
     .select("id, question_id, answer")
     .in("question_id", questionIds);

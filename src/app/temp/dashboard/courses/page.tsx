@@ -1,6 +1,6 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
+import { requireStudentPage } from "@/lib/supabase/page-auth";
 
 const LEVEL_COLORS: Record<string, string> = {
   A1: "#FBBF24",
@@ -12,23 +12,13 @@ const LEVEL_COLORS: Record<string, string> = {
 };
 
 export default async function CoursesPage() {
+  const { profile } = await requireStudentPage({ includeSubscription: true });
+
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/temp/login");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("has_subscription")
-    .eq("id", user.id)
-    .maybeSingle();
 
   const isSubscribed = profile?.has_subscription ?? false;
 
-  const admin = await createAdminClient();
-  const { data: courses } = await admin
+  const { data: courses } = await supabase
     .from("courses")
     .select("id, title, description, level, content_text")
     .eq("is_published", true)

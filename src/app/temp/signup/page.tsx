@@ -19,35 +19,37 @@ export default function TempSignupPage() {
     setLoading(true);
     setMessage("");
 
-    const supabase = createClient();
-
-    // Store name/username in user_metadata — profile will be created on first login
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { name, username },
-      },
+    const signupRes = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, username, email, password }),
     });
 
-    console.log("[temp/signup] signUp result:", authData, authError);
+    const signupBody = await signupRes.json();
 
-    if (authError) {
-      setMessage("Signup error: " + authError.message);
+    if (!signupRes.ok) {
+      setMessage("Signup error: " + (signupBody.error || "Failed to create account"));
       setLoading(false);
       return;
     }
 
-    if (!authData.user) {
+    const supabase = createClient();
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (signInError) {
       setMessage(
-        "Signup succeeded but no user returned. Check your email for a confirmation link.",
+        "Account created! Please sign in on the login page.",
       );
+      setTimeout(() => router.push("/temp/login"), 1500);
       setLoading(false);
       return;
     }
 
-    setMessage("Signup successful! Redirecting to login...");
-    setTimeout(() => router.push("/temp/login"), 1500);
+    setMessage("Signup successful! Redirecting to dashboard...");
+    setTimeout(() => router.push("/temp/dashboard"), 1000);
     setLoading(false);
   }
 

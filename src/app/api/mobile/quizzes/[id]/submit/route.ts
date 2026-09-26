@@ -31,6 +31,14 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { data: assignedTeacher, error: assignmentError } =
+      await supabase.rpc("assigned_teacher_id");
+    if (assignmentError || !assignedTeacher)
+      return NextResponse.json(
+        { error: "An active student teacher assignment is required." },
+        { status: 403 },
+      );
+
     const body = await request.json();
     const { answers } = body;
 
@@ -41,13 +49,14 @@ export async function POST(
       );
     }
 
-    // Use admin client for all data reads — auth is already verified above
+    // Private answer keys are read only after the cookie client checks quiz access.
     const adminSupabase = await createAdminClient();
 
     // 1. Fetch the quiz with its title and passing score
-    const { data: quiz, error: quizError } = await adminSupabase
+    const { data: quiz, error: quizError } = await supabase
       .from("quizzes")
       .select("id, title, passing_score")
+      .eq("learning_runtime", "legacy")
       .eq("id", id)
       .single();
 
@@ -55,30 +64,55 @@ export async function POST(
       return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
     }
 
-    const questionIds = answers.map(
-      (a: { question_id: string }) => a.question_id,
-    );
-
-    // 2. Fetch question text + ALL answers (text + is_correct) for these questions
-    const [{ data: questions }, { data: allAnswers, error: answersError }] =
-      await Promise.all([
-        adminSupabase
-          .from("quiz_questions")
-          .select("id, question")
-          .in("id", questionIds),
-        adminSupabase
-          .from("quiz_answers")
-          .select("id, question_id, answer, is_correct")
-          .in("question_id", questionIds),
-      ]);
-
-    if (answersError) {
-      console.error("Error fetching answers:", answersError);
+    // Load the complete authorized quiz, never arbitrary client question IDs.
+    const { data: questions, error: questionError } = await adminSupabase
+      .from("quiz_questions")
+      .select("id, question")
+      .eq("quiz_id", id);
+    if (questionError)
       return NextResponse.json(
-        { error: "Failed to grade quiz" },
-        { status: 500 },
+        { error: "Failed to load quiz." },
+        { status: 503 },
       );
-    }
+    const questionIds = (questions ?? []).map((q) => q.id);
+    if (
+      !questionIds.length ||
+      answers.length !== questionIds.length ||
+      answers.some(
+        (a) =>
+          !a ||
+          typeof a.question_id !== "string" ||
+          typeof a.answer_id !== "string" ||
+          !questionIds.includes(a.question_id),
+      ) ||
+      new Set(answers.map((a) => a.question_id)).size !== questionIds.length
+    )
+      return NextResponse.json(
+        { error: "Answer every question in this quiz exactly once." },
+        { status: 400 },
+      );
+    const { data: allAnswers, error: answersError } = await adminSupabase
+      .from("quiz_answers")
+      .select("id, question_id, answer, is_correct")
+      .in("question_id", questionIds);
+    if (answersError)
+      return NextResponse.json(
+        { error: "Failed to grade quiz." },
+        { status: 503 },
+      );
+    if (
+      answers.some(
+        (a) =>
+          !allAnswers?.some(
+            (option) =>
+              option.id === a.answer_id && option.question_id === a.question_id,
+          ),
+      )
+    )
+      return NextResponse.json(
+        { error: "Invalid answer option." },
+        { status: 400 },
+      );
 
     // 3. Build lookup maps
     const questionTextMap = new Map(

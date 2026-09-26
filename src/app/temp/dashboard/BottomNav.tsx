@@ -27,7 +27,7 @@ export function BottomNav() {
         label="Quizzes"
       />
       <NavItem
-        href="/temp/dashboard/profile"
+        href="/temp/dashboard?view=profile"
         active={pathname === "/temp/dashboard/profile"}
         icon={<IconProfile />}
         label="Profile"

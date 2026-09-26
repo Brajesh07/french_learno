@@ -7,7 +7,6 @@ import QuizPreview from "./QuizPreview";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
-import { useAuth } from "@/components/auth/AuthProvider";
 import { generateId } from "@/lib/utils";
 
 interface QuizCreatorProps {
@@ -21,7 +20,6 @@ export default function QuizCreator({
   courseTitle,
   quizId,
 }: QuizCreatorProps) {
-  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(!!quizId);
   const [courses, setCourses] = useState<{ id: string; title: string }[]>([]);
@@ -44,7 +42,7 @@ export default function QuizCreator({
     if (!initialCourseId) {
       const fetchCourses = async () => {
         try {
-          const response = await fetch("/api/admin/courses?limit=100", {
+          const response = await fetch("/api/teacher/courses?limit=100", {
             credentials: "include",
           });
           if (response.ok) {
@@ -65,7 +63,7 @@ export default function QuizCreator({
       const fetchQuiz = async () => {
         try {
           setIsFetching(true);
-          const response = await fetch(`/api/admin/quizzes/${quizId}`, {
+          const response = await fetch(`/api/teacher/quizzes/${quizId}`, {
             credentials: "include",
           });
 
@@ -159,14 +157,6 @@ export default function QuizCreator({
   }, []);
 
   const handleSave = async (publishStatus: boolean = false) => {
-    if (!user) {
-      setFeedback({
-        type: "error",
-        message: "You must be logged in to create quizzes",
-      });
-      return;
-    }
-
     if (!formData.title.trim()) {
       setFeedback({ type: "error", message: "Quiz title is required" });
       return;
@@ -241,8 +231,8 @@ export default function QuizCreator({
       };
 
       const url = quizId
-        ? `/api/admin/quizzes/${quizId}`
-        : "/api/admin/quizzes";
+        ? `/api/teacher/quizzes/${quizId}`
+        : "/api/teacher/quizzes";
       const method = quizId ? "PATCH" : "POST";
 
       const response = await fetch(url, {
@@ -388,23 +378,6 @@ export default function QuizCreator({
                     </select>
                   </div>
                 )}
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Time Limit (minutes)
-                  </label>
-                  <Input
-                    type="number"
-                    value={formData.timeLimit}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        timeLimit: parseInt(e.target.value) || 30,
-                      }))
-                    }
-                    min="1"
-                  />
-                </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

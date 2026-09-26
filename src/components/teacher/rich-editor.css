@@ -1,0 +1,370 @@
+.rich-editor {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 28px 24px 60px;
+  background: #f8fafc;
+  border-radius: 24px;
+  color: #243047;
+}
+.rich-editor * {
+  box-sizing: border-box;
+}
+.rich-editor button {
+  cursor: pointer;
+}
+.rich-editor button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+.rich-editor button:focus-visible,
+.rich-editor input:focus-visible,
+.rich-editor textarea:focus-visible,
+.rich-editor select:focus-visible {
+  outline: 3px solid #a5b4fc;
+  outline-offset: 2px;
+}
+.rich-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+.rich-heading a {
+  font-size: 14px;
+  color: #4f46e5;
+}
+.rich-heading h1 {
+  font-size: 30px;
+  line-height: 1.2;
+  font-weight: 750;
+  margin: 10px 0;
+}
+.rich-heading p {
+  color: #64748b;
+  max-width: 700px;
+}
+.rich-heading .rich-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  color: #6366f1;
+  margin-top: 24px;
+  font-weight: 700;
+}
+.rich-badge {
+  padding: 8px 13px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4f46e5;
+  font-size: 12px;
+  white-space: nowrap;
+  margin-top: 22px;
+}
+.rich-layout {
+  border: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 24px;
+  min-width: 0;
+}
+.rich-outline,
+.rich-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: #fff;
+  padding: 24px;
+}
+.rich-outline {
+  align-self: start;
+  position: sticky;
+  top: 24px;
+  max-height: 80vh;
+  overflow: auto;
+}
+.rich-outline h2,
+.rich-card h2 {
+  font-size: 19px;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+.rich-outline > button,
+.rich-outline li button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+.rich-outline .selected {
+  background: #eef2ff;
+  color: #4338ca;
+}
+.rich-outline ol {
+  list-style: none;
+  padding: 0;
+  max-height: 45vh;
+  overflow: auto;
+}
+.rich-outline li span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rich-outline li small {
+  display: block;
+  color: #64748b;
+  font-size: 11px;
+  margin-top: 4px;
+}
+.rich-editor label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 600;
+  min-width: 0;
+}
+.rich-editor label small,
+.rich-editor small {
+  font-size: 12px;
+  font-weight: 400;
+  color: #64748b;
+}
+.rich-editor input:not([type="radio"]),
+.rich-editor textarea,
+.rich-editor select {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: #fff;
+  color: #243047;
+  padding: 11px;
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+.rich-editor input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #4f46e5;
+  flex-shrink: 0;
+}
+.rich-editor textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+.rich-question-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.rich-field-section {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.rich-field-section h3 {
+  font-size: 17px;
+  font-weight: 700;
+}
+.rich-field-section p {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.65;
+}
+.rich-option-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.rich-option-row input:not([type="radio"]) {
+  flex: 1;
+  min-width: 0;
+}
+.rich-secondary,
+.rich-primary {
+  padding: 11px 16px;
+  border-radius: 9px;
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.rich-secondary {
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+}
+.rich-primary {
+  background: #4f46e5;
+  color: #fff;
+  border: 1px solid #4f46e5;
+}
+.rich-text-button {
+  font-size: 12px;
+  color: #4f46e5;
+  padding: 8px;
+}
+.rich-question-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.rich-question-heading > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.rich-settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.rich-sequence {
+  padding: 16px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+}
+.rich-sequence h4 {
+  font-size: 14px;
+  font-weight: 650;
+  margin-bottom: 12px;
+}
+.rich-token-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 0;
+  min-height: 40px;
+}
+.rich-token-row button {
+  border: 1px solid #c7d2fe;
+  padding: 6px 12px;
+  border-radius: 7px;
+  background: #eef2ff;
+  font-size: 14px;
+}
+.rich-actions {
+  position: sticky;
+  bottom: 10px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 22px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 6px 25px #24304712;
+  border-radius: 14px;
+  padding: 20px;
+  z-index: 10;
+}
+.rich-actions > div {
+  margin-right: auto;
+}
+.rich-actions strong,
+.rich-actions small {
+  display: block;
+}
+.rich-actions strong {
+  font-size: 14px;
+}
+.rich-actions small {
+  margin-top: 5px;
+}
+.rich-message,
+.rich-error {
+  padding: 16px 20px;
+  border-radius: 12px;
+  margin: 16px 0;
+  font-size: 14px;
+  line-height: 1.65;
+}
+.rich-message {
+  background: #eef2ff;
+  color: #3730a3;
+}
+.rich-message a {
+  text-decoration: underline;
+}
+.rich-error {
+  background: #fff1f2;
+  color: #9f1239;
+}
+.rich-editor details summary {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 0;
+}
+.rich-editor details label {
+  margin-top: 16px;
+}
+.rich-json {
+  margin-top: 24px;
+}
+.rich-json p {
+  font-size: 13px;
+  color: #64748b;
+}
+.rich-json pre {
+  background: #f1f5f9;
+  padding: 20px;
+  border-radius: 12px;
+  max-height: 400px;
+  overflow: auto;
+  font-size: 12px;
+}
+.rich-outline > small {
+  display: block;
+  margin-top: 12px;
+}
+.rich-outline > label {
+  margin: 20px 0 12px;
+}
+@media (max-width: 850px) {
+  .rich-layout {
+    grid-template-columns: 1fr;
+  }
+  .rich-outline {
+    position: static;
+    max-height: none;
+  }
+  .rich-outline ol {
+    max-height: 220px;
+  }
+  .rich-actions {
+    flex-wrap: wrap;
+  }
+  .rich-actions > div {
+    width: 100%;
+    margin: 0;
+  }
+  .rich-heading {
+    flex-wrap: wrap;
+  }
+  .rich-badge {
+    margin-top: 0;
+  }
+  .rich-editor {
+    padding: 20px 12px 40px;
+  }
+  .rich-card,
+  .rich-outline {
+    padding: 20px;
+  }
+  .rich-question-heading {
+    flex-direction: column;
+  }
+  .rich-settings-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .rich-actions {
+    bottom: 0;
+  }
+}

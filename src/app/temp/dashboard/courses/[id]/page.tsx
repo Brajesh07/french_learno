@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
+import { requireStudentPage } from "@/lib/supabase/page-auth";
 import CompleteButton from "./CompleteButton";
 
 const LEVEL_COLORS: Record<string, string> = {
@@ -21,18 +22,11 @@ export default async function CoursePage({
   const { id } = await params;
   const supabase = await createClient();
 
-  // Auth guard
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/temp/login");
-
-  // Check subscription
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("has_subscription, name")
-    .eq("id", user.id)
-    .maybeSingle();
+  // Auth + role guard
+  const { user, profile } = await requireStudentPage({
+    includeSubscription: true,
+    includeName: true,
+  });
 
   if (!profile?.has_subscription) redirect("/temp/dashboard");
 
@@ -62,6 +56,7 @@ export default async function CoursePage({
   const { data: quizzes } = await supabase
     .from("quizzes")
     .select("id, title, description, passing_score")
+    .eq("learning_runtime", "legacy")
     .eq("course_id", id)
     .eq("is_published", true)
     .order("created_at", { ascending: true });
