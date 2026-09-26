@@ -103,10 +103,11 @@ function LearningDashboard({
   }
   const name = state.profile?.name || learnerName;
   const { catalogue, session } = learning;
-  const modules = catalogue?.modules ?? [],
+  const modules = catalogue?.assignment ? catalogue.modules : [],
     available = modules.filter((m) => !m.locked);
   const next = available.find((m) => !m.completed) ?? available[0];
   const canPractice =
+    !!catalogue?.assignment &&
     (status === "saved" || status === "saving") &&
     !learning.busy &&
     !learning.loading;
@@ -330,7 +331,7 @@ function LearningDashboard({
           )}
           {!reader &&
             ["Home", "Learn", "Play"].includes(active) &&
-            catalogue &&
+            catalogue?.assignment &&
             modules.length === 0 && (
               <section className="leaderboard-empty">
                 <BookOpen size={38} />
@@ -347,7 +348,26 @@ function LearningDashboard({
                 </button>
               </section>
             )}
-          {reader && (
+          {catalogue &&
+            !catalogue.assignment &&
+            ["Home", "Learn", "Play"].includes(active) && (
+              <section className="leaderboard-empty" role="status">
+                <BookOpen size={38} />
+                <h2>Your learning space is ready.</h2>
+                <p>
+                  You have not been assigned to a teacher yet. Please wait or
+                  contact your administrator.
+                </p>
+                <button
+                  className="primary"
+                  disabled={learning.loading}
+                  onClick={() => void learning.refresh()}
+                >
+                  Check assignment
+                </button>
+              </section>
+            )}
+          {reader && catalogue?.assignment && (
             <CourseMaterialReader
               key={reader.id}
               userId={userId}
@@ -474,7 +494,7 @@ function LearningDashboard({
               </footer>
             </>
           )}
-          {!reader && active === "Learn" && (
+          {!reader && !!catalogue?.assignment && active === "Learn" && (
             <section className="view-page">
               <span className="eyebrow">YOUR FRENCH JOURNEY</span>
               <h1>One chapter at a time.</h1>
@@ -482,7 +502,7 @@ function LearningDashboard({
               {moduleList}
             </section>
           )}
-          {!reader && active === "Play" && (
+          {!reader && !!catalogue?.assignment && active === "Play" && (
             <section className="view-page">
               <span className="eyebrow">PRACTICE THAT FEELS LIKE PLAY</span>
               <h1>A little practice goes a long way.</h1>

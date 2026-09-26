@@ -20,25 +20,44 @@ export function useTrustedLearning(userId: string) {
     [error, setError] = useState("");
   const pendingStart = useRef<StartSessionRequest | null>(null),
     locked = useRef(false);
+  const assignmentId = useRef<string | null | undefined>(undefined);
+  const refreshSequence = useRef(0);
   const refresh = useCallback(async () => {
+    const sequence = ++refreshSequence.current;
     setLoading(true);
     setError("");
     try {
       const data = await learningRequest<LearningCatalogue>("modules", userId);
+      if (sequence !== refreshSequence.current) return;
+      const incomingAssignment = data.assignment?.id ?? null;
+      if (
+        assignmentId.current !== undefined &&
+        assignmentId.current !== incomingAssignment
+      ) {
+        setSession(null);
+        pendingStart.current = null;
+      }
+      assignmentId.current = incomingAssignment;
       setCatalogue((old) => ({
         ...data,
         totals: old ? newestTotals(old.totals, data.totals) : data.totals,
       }));
     } catch (e) {
+      if (sequence !== refreshSequence.current) return;
       setError(
         e instanceof Error ? e.message : "Your modules could not be loaded.",
       );
     } finally {
-      setLoading(false);
+      if (sequence === refreshSequence.current) setLoading(false);
     }
   }, [userId]);
   useEffect(() => {
     void refresh();
+    const onFocus = () => {
+      void refresh();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
   }, [refresh]);
   function confirm(receipt: ConfirmedAnswer) {
     setCatalogue((old) =>
@@ -51,6 +70,7 @@ export function useTrustedLearning(userId: string) {
     resumeId?: string,
   ) {
     if (locked.current) return;
+    const openingAssignment = assignmentId.current;
     locked.current = true;
     setBusy(true);
     setError("");
@@ -80,6 +100,10 @@ export function useTrustedLearning(userId: string) {
             userId,
             pendingStart.current,
           );
+      if (assignmentId.current !== openingAssignment)
+        throw new Error(
+          "Your teacher assignment changed. Choose a current lesson.",
+        );
       pendingStart.current = null;
       setCatalogue((old) =>
         old ? { ...old, totals: newestTotals(old.totals, data.totals) } : old,

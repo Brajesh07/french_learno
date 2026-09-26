@@ -8,6 +8,14 @@ insert into public.profiles(id,email,username,name,role) values
 ('11000000-0000-4000-8000-000000000002','submit-b@example.test','submit_test_b','Test B','student'),
 ('11000000-0000-4000-8000-000000000003','submit-teacher@example.test','submit_test_teacher','Teacher','teacher');
 insert into public.teacher_profiles(id,verification_status) values('11000000-0000-4000-8000-000000000003','approved');
+-- After the assignment rollout, these grading fixtures are assigned explicitly.
+do $$ begin
+ if to_regprocedure('public.assigned_teacher_id()') is not null then
+  insert into public.teacher_students(teacher_id,student_id) values
+  ('11000000-0000-4000-8000-000000000003','11000000-0000-4000-8000-000000000001'),
+  ('11000000-0000-4000-8000-000000000003','11000000-0000-4000-8000-000000000002');
+ end if;
+end $$;
 insert into public.courses(id,title,level,created_by,is_published) values
 ('21000000-0000-4000-8000-000000000001','Fixture','A1','11000000-0000-4000-8000-000000000003',true);
 insert into public.quizzes(id,course_id,title,created_by,is_published) values

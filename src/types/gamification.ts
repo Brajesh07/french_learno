@@ -378,6 +378,7 @@ export interface AvailableModule {
   types: ExerciseType[];
 }
 export interface LearningCatalogue {
+  assignment: { id: string; teacherId: string; teacherName: string } | null;
   modules: AvailableModule[];
   totals: ConfirmedAnswer["totals"];
   activeSessions: { id: UUID; mode: SessionMode; createdAt: ISODateTime }[];

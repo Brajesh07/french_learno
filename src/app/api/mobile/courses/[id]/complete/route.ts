@@ -26,6 +26,14 @@ export async function POST(
     }
 
     // Verify the course exists and is published
+    const { data: assignedTeacher, error: assignmentError } =
+      await supabase.rpc("assigned_teacher_id");
+    if (assignmentError || !assignedTeacher)
+      return NextResponse.json(
+        { error: "An active student teacher assignment is required." },
+        { status: 403 },
+      );
+
     const { data: course, error: courseError } = await supabase
       .from("courses")
       .select("id, title")

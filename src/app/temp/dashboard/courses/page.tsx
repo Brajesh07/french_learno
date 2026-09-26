@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { requireStudentPage } from "@/lib/supabase/page-auth";
 
 const LEVEL_COLORS: Record<string, string> = {
@@ -18,8 +18,7 @@ export default async function CoursesPage() {
 
   const isSubscribed = profile?.has_subscription ?? false;
 
-  const admin = await createAdminClient();
-  const { data: courses } = await admin
+  const { data: courses } = await supabase
     .from("courses")
     .select("id, title, description, level, content_text")
     .eq("is_published", true)

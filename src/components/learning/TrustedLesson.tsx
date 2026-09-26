@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, Heart, Lightbulb, Trophy, Volume2 } from "lucide-react";
+import { ArrowRight, Heart, Trophy } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -8,76 +8,18 @@ import {
   DialogTitle,
 } from "@/components/ui/learning/dialog";
 import { Progress } from "@/components/ui/learning/progress";
-import {
-  RadioGroup,
-  RadioGroupItem,
-} from "@/components/ui/learning/radio-group";
+import { AudioButton, ExercisePresentation } from "./ExercisePresentation";
 import {
   learningRequest,
   LearningRequestError,
 } from "@/lib/gamification/client";
 import type {
   AnswerSubmission,
-  AudioSource,
   ConfirmedAnswer,
   ExerciseResponse,
   StartedSession,
 } from "@/types/gamification";
 
-function AudioButton({
-  audio,
-  sessionId,
-  assetUrl,
-}: {
-  audio: AudioSource;
-  sessionId: string;
-  assetUrl?: (id: string) => string;
-}) {
-  const [error, setError] = useState("");
-  useEffect(() => () => window.speechSynthesis?.cancel(), []);
-  if (audio.source === "asset")
-    return (
-      <>
-        <audio
-          controls
-          preload="none"
-          onError={() =>
-            setError("Audio could not load. Use the transcript or try again.")
-          }
-          src={
-            assetUrl?.(audio.assetId) ??
-            `/api/student/sessions/${sessionId}/assets/${audio.assetId}`
-          }
-          aria-label="French audio"
-        />
-        {error && <p role="status">{error}</p>}
-      </>
-    );
-  return (
-    <>
-      <button
-        type="button"
-        className="audio-button"
-        onClick={() => {
-          if (!window.speechSynthesis) {
-            setError("Speech playback is unavailable. Use the transcript.");
-            return;
-          }
-          window.speechSynthesis.cancel();
-          const utterance = new SpeechSynthesisUtterance(audio.text);
-          utterance.lang = audio.locale;
-          utterance.rate = audio.rate;
-          utterance.onerror = () =>
-            setError("Audio could not play. Use the transcript.");
-          window.speechSynthesis.speak(utterance);
-        }}
-      >
-        <Volume2 size={19} /> Listen
-      </button>
-      {error && <p role="status">{error}</p>}
-    </>
-  );
-}
 export function TrustedLesson({
   session,
   userId,
@@ -98,6 +40,9 @@ export function TrustedLesson({
   previewSubmit?: (answer: AnswerSubmission) => Promise<ConfirmedAnswer>;
   assetUrl?: (id: string) => string;
 }) {
+  const resolveAsset =
+    assetUrl ??
+    ((id: string) => `/api/student/sessions/${session.id}/assets/${id}`);
   const [index, setIndex] = useState(session.receipts.length);
   const [receipts, setReceipts] = useState(session.receipts);
   const [answer, setAnswer] = useState(""),
@@ -233,7 +178,8 @@ export function TrustedLesson({
               </span>
             </div>
             <button className="primary" onClick={onClose}>
-              {previewSubmit ? "Back to editor" : "Back to my journey"} <ArrowRight size={18} />
+              {previewSubmit ? "Back to editor" : "Back to my journey"}{" "}
+              <ArrowRight size={18} />
             </button>
           </>
         ) : (
@@ -255,155 +201,22 @@ export function TrustedLesson({
             <DialogDescription>
               {q.presentation.instructions.en}
             </DialogDescription>
-            {q.presentation.media.map((media, i) =>
-              media.kind === "image" ? (
-                // Authorized route serves short-lived private media, not arbitrary URLs.
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  key={i}
-                  className="exercise-image"
-                  src={
-                    assetUrl?.(media.assetId) ??
-                    `/api/student/sessions/${session.id}/assets/${media.assetId}`
-                  }
-                  alt={media.alt.en}
-                />
-              ) : (
-                <div key={i} className="audio-section">
-                  <AudioButton
-                    audio={media}
-                    sessionId={session.id}
-                    assetUrl={assetUrl}
-                  />
-                  {q.type === "listening_choice" && (
-                    <button
-                      className="plain-button"
-                      disabled={frozen}
-                      onClick={() => setTranscript(true)}
-                    >
-                      Show transcript
-                    </button>
-                  )}
-                  {transcript && <p lang="fr">{media.transcript.text}</p>}
-                </div>
-              ),
-            )}
-            {q.type === "typed_recall" && (
-              <>
-                <input
-                  className="answer-input"
-                  aria-label="Your French answer"
-                  lang="fr"
-                  autoComplete="off"
-                  spellCheck={false}
-                  maxLength={q.presentation.interaction.maxLength}
-                  disabled={frozen || paused}
-                  value={answer}
-                  onChange={(e) => setAnswer(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && answer.trim()) void submit();
-                  }}
-                />
-                <div className="word-bank">
-                  {q.presentation.interaction.characterPalette.map((c) => (
-                    <button
-                      key={c}
-                      disabled={frozen || paused}
-                      onClick={() =>
-                        setAnswer(
-                          (answer + c).slice(
-                            0,
-                            q.presentation.interaction.maxLength,
-                          ),
-                        )
-                      }
-                    >
-                      {c}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-            {(q.type === "multiple_choice" ||
-              q.type === "listening_choice") && (
-              <RadioGroup
-                className="answer-options"
-                value={answer}
-                onValueChange={setAnswer}
-                disabled={frozen || paused}
-              >
-                {item.displayOrder.map((id) => {
-                  const option = q.presentation.interaction.options.find(
-                    (o) => o.id === id,
-                  )!;
-                  return (
-                    <label
-                      key={id}
-                      className={`answer-option ${answer === id ? "chosen" : ""}`}
-                    >
-                      <RadioGroupItem value={id} />
-                      <span lang="fr">{option.text}</span>
-                    </label>
-                  );
-                })}
-              </RadioGroup>
-            )}
-            {q.type === "sentence_builder" && (
-              <>
-                <div className="sentence-answer" aria-label="Your sentence">
-                  {tokens.length === 0 && (
-                    <span>Tap words below to build your sentence.</span>
-                  )}
-                  {tokens.map((id, i) => (
-                    <button
-                      key={id}
-                      disabled={frozen || paused}
-                      onClick={() =>
-                        setTokens(tokens.filter((_, j) => j !== i))
-                      }
-                      aria-label={`Remove ${q.presentation.interaction.tokens.find((t) => t.id === id)!.text}`}
-                    >
-                      {
-                        q.presentation.interaction.tokens.find(
-                          (t) => t.id === id,
-                        )!.text
-                      }
-                    </button>
-                  ))}
-                </div>
-                <div className="word-bank">
-                  {item.displayOrder.map((id) => (
-                    <button
-                      key={id}
-                      lang="fr"
-                      disabled={frozen || paused || tokens.includes(id)}
-                      onClick={() => setTokens([...tokens, id])}
-                    >
-                      {
-                        q.presentation.interaction.tokens.find(
-                          (t) => t.id === id,
-                        )!.text
-                      }
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-            {q.presentation.hints.map((hint) => (
-              <div key={hint.id}>
-                {hints.includes(hint.id) ? (
-                  <p className="inline-note">{hint.text.en}</p>
-                ) : (
-                  <button
-                    className="plain-button hint-button"
-                    disabled={frozen}
-                    onClick={() => setHints([...hints, hint.id])}
-                  >
-                    <Lightbulb size={16} /> Show hint
-                  </button>
-                )}
-              </div>
-            ))}
+            <ExercisePresentation
+              question={q}
+              displayOrder={item.displayOrder}
+              answer={answer}
+              setAnswer={setAnswer}
+              tokens={tokens}
+              setTokens={setTokens}
+              hints={hints}
+              setHints={setHints}
+              transcript={transcript}
+              setTranscript={setTranscript}
+              disabled={frozen || paused}
+              assistanceDisabled={frozen}
+              onSubmit={() => void submit()}
+              assetUrl={resolveAsset}
+            />
             {paused && (
               <p className="inline-note">
                 Your hearts are empty. Close this session and choose Gentle
@@ -436,9 +249,8 @@ export function TrustedLesson({
                 )}
                 {receipt.feedback.pronunciation?.audio && (
                   <AudioButton
-                    assetUrl={assetUrl}
+                    assetUrl={resolveAsset}
                     audio={receipt.feedback.pronunciation.audio}
-                    sessionId={session.id}
                   />
                 )}
                 {receipt.feedback.example && (

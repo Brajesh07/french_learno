@@ -3,7 +3,7 @@
 -- premium-only theory in a course that also contains free modules.
 begin;
 
-create function public.get_learning_material(p_module_id uuid) returns jsonb
+create or replace function public.get_learning_material(p_module_id uuid) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare revision_id uuid; m public.quiz_revisions; c public.courses;
 begin

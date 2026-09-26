@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { requireStudentPage } from "@/lib/supabase/page-auth";
 import QuizForm from "./QuizForm";
 
@@ -10,7 +10,7 @@ export default async function QuizPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const admin = await createAdminClient();
+  const supabase = await createClient();
 
   // Auth + role guard
   const { profile } = await requireStudentPage({ includeSubscription: true });
@@ -20,8 +20,8 @@ export default async function QuizPage({
     redirect("/temp/dashboard");
   }
 
-  // Fetch quiz (using admin client to ensure we see it if published)
-  const { data: quiz, error: quizError } = await admin
+  // Cookie client enforces current teacher assignment through RLS.
+  const { data: quiz, error: quizError } = await supabase
     .from("quizzes")
     .select("id, title, description, passing_score, course_id")
     .eq("learning_runtime", "legacy")
@@ -34,8 +34,8 @@ export default async function QuizPage({
     redirect("/temp/dashboard");
   }
 
-  // Fetch questions (using admin client)
-  const { data: questions, error: questionsError } = await admin
+  // Fetch only questions allowed by the student's cookie session and RLS.
+  const { data: questions, error: questionsError } = await supabase
     .from("quiz_questions")
     .select("id, question, type, points")
     .eq("quiz_id", id)
@@ -59,9 +59,9 @@ export default async function QuizPage({
     );
   }
 
-  // Fetch answer options (without is_correct) using admin client
+  // Fetch answer options without exposing the grading flag.
   const questionIds = questions.map((q) => q.id);
-  const { data: answers } = await admin
+  const { data: answers } = await supabase
     .from("quiz_answers")
     .select("id, question_id, answer")
     .in("question_id", questionIds);
